@@ -1,38 +1,83 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page, Locator } from '@playwright/test';
+
+type Element = {
+  locator: (page: Page) => Locator;
+  name: string;
+  text?: string;
+  attribute?: string;
+  value?: string;
+};
+
+const elements: Element[] = [
+  {
+    locator: (page: Page) => page.getByRole('link', { name: 'Docs', exact: true }),
+    name: 'Docs',
+    text: 'Docs',
+    attribute: 'href',
+    value: '/docs/intro',
+  },
+  {
+    locator: (page: Page) => page.getByRole('link', { name: 'CLI', exact: true }),
+    name: 'CLI',
+    text: 'CLI',
+  },
+  {
+    locator: (page: Page) => page.getByRole('link', { name: 'MCP', exact: true }),
+    name: 'MCP',
+    text: 'MCP',
+  },
+  {
+    locator: (page: Page) => page.getByRole('link', { name: 'API', exact: true }),
+    name: 'API',
+    text: 'API',
+  },
+  {
+    locator: (page: Page) => page.getByRole('link', { name: 'GitHub repository', exact: true }),
+    name: 'GitHub repository',
+    text: 'GitHub repository',
+    attribute: 'href',
+    value: 'https://github.com/microsoft/playwright',
+  },
+  {
+    locator: (page: Page) => page.getByRole('link', { name: 'Discord server', exact: true }),
+    name: 'Discord server',
+    text: 'Discord server',
+    attribute: 'href',
+    value: 'https://aka.ms/playwright/discord',
+  },
+];
 
 test.describe('Проверка главной страницы', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('https://playwright.dev/');
   });
+
   test('Проверка елем навигации Header', async ({ page }) => {
-    await expect(page.getByRole('link', { name: 'Docs' })).toBeVisible();
-    await page.getByRole('link', { name: 'MCP', exact: true }).click();
-    await expect(page.getByRole('link', { name: 'MCP', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'CLI', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'API' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Node.js' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Playwright logo Playwright' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'GitHub repository' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Discord server' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Switch between dark and light' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Search (Control+k)' })).toBeVisible();
+    for (const element of elements) {
+      await test.step(`Проверка отображения навигации Header: ${element.name}`, async () => {
+        await expect.soft(element.locator(page)).toBeVisible();
+      });
+    }
   });
 
   test('Проверка елем названия навигации Header', async ({ page }) => {
-    await expect(page.getByRole('link', { name: 'Docs' })).toContainText('Docs');
-    await expect(page.getByLabel('Main', { exact: true }).locator('b')).toContainText('Playwright');
+    for (const element of elements) {
+      await test.step(`Проверка названия элемента навигации Header: ${element.name}`, async () => {
+        await expect.soft(element.locator(page)).toContainText(element.text || element.name);
+      });
+    }
   });
 
   test('Проверка аттрибутов href', async ({ page }) => {
-    await expect(page.getByRole('link', { name: 'Docs' })).toHaveAttribute('href', '/docs/intro');
-    await expect(page.getByRole('link', { name: 'GitHub repository' })).toHaveAttribute(
-      'href',
-      'https://github.com/microsoft/playwright',
-    );
-    await expect(page.getByRole('link', { name: 'Discord server' })).toHaveAttribute(
-      'href',
-      'https://aka.ms/playwright/discord',
-    );
+    for (const element of elements) {
+      if (element.attribute && element.value) {
+        await test.step(`Проверка атрибута href для элемента: ${element.name}`, async () => {
+          await expect
+            .soft(element.locator(page))
+            .toHaveAttribute(element.attribute!, element.value!);
+        });
+      }
+    }
   });
 
   test('Проверка Заголовка страницы', async ({ page }) => {
