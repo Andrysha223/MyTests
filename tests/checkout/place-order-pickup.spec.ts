@@ -7,6 +7,10 @@ import { CartPage } from '../pages/CartPage';
 
 const EMAIL = process.env['LOGIN_EMAIL'];
 const PASSWORD = process.env['LOGIN_PASSWORD'];
+const LAST_NAME = process.env['LOGIN_LAST_NAME'];
+const FIRST_NAME = process.env['LOGIN_FIRST_NAME'];
+const PATRONYMIC = process.env['LOGIN_PATRONYMIC'];
+const PHONE = process.env['LOGIN_PHONE'];
 const PRODUCT_NAME = 'Конструктор LEGO City Залізничні стрілки (60238)';
 const CITY = 'Київ';
 const SHOP_NAME_CONTAINS = 'Басейна';
@@ -20,7 +24,10 @@ test.use({ ignoreHTTPSErrors: true });
 // аккаунта -> самовивіз з конкретного магазину -> оплата при отриманні) ->
 // подтверждение с номером заказа.
 test('Оформление заказа с самовывозом и оплатой при получении (web1-bi.ua)', async ({ page }) => {
-  test.skip(!EMAIL || !PASSWORD, 'LOGIN_EMAIL / LOGIN_PASSWORD не заданы в .env');
+  test.skip(
+    !EMAIL || !PASSWORD || !LAST_NAME || !FIRST_NAME || !PATRONYMIC || !PHONE,
+    'LOGIN_EMAIL / LOGIN_PASSWORD / LOGIN_LAST_NAME / LOGIN_FIRST_NAME / LOGIN_PATRONYMIC / LOGIN_PHONE не заданы в .env',
+  );
   test.setTimeout(90000);
 
   const brandPage = new LegoBrandPage(page);
@@ -45,6 +52,16 @@ test('Оформление заказа с самовывозом и оплат�
 
   await test.step('Start checkout', async () => {
     await checkoutPage.startCheckout();
+  });
+
+  await test.step('Verify pre-filled contact details', async () => {
+    // Проверяем, что чекаут реально подтягивает данные из авторизованного
+    // аккаунта, а не оставляет поля пустыми/дефолтными.
+    await expect(checkoutPage.lastNameInput).toHaveValue(LAST_NAME!);
+    await expect(checkoutPage.firstNameInput).toHaveValue(FIRST_NAME!);
+    await expect(checkoutPage.patronymicInput).toHaveValue(PATRONYMIC!);
+    await expect(checkoutPage.phoneInput).toHaveValue(PHONE!);
+    await expect(checkoutPage.emailInput).toHaveValue(EMAIL!);
   });
 
   await test.step('Confirm pre-filled contact details', async () => {

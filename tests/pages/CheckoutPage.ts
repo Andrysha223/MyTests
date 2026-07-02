@@ -8,6 +8,13 @@ export class CheckoutPage {
   // Шаг 1: Контактні дані. Форма ищется по лейблу "Прізвище", т.к. на странице
   // одновременно лежит несколько форм (поиск, попапы, чекаут).
   readonly contactDetailsForm: Locator;
+  // Поля предзаполняются данными авторизованного аккаунта. У инпутов нет
+  // ни id, ни name (кроме телефона) — различаем только по порядку в форме.
+  readonly lastNameInput: Locator;
+  readonly firstNameInput: Locator;
+  readonly patronymicInput: Locator;
+  readonly phoneInput: Locator;
+  readonly emailInput: Locator;
 
   // Шаг 2: Вибір способу доставки.
   readonly cityInput: Locator;
@@ -24,6 +31,12 @@ export class CheckoutPage {
     this.page = page;
     this.startCheckoutButton = page.locator('text=Оформити замовлення');
     this.contactDetailsForm = page.locator('form', { has: page.locator('text=Прізвище') });
+    const contactTextInputs = this.contactDetailsForm.locator('input[type="text"]');
+    this.lastNameInput = contactTextInputs.nth(0);
+    this.firstNameInput = contactTextInputs.nth(1);
+    this.patronymicInput = contactTextInputs.nth(2);
+    this.phoneInput = this.contactDetailsForm.locator('input[name="phone"]');
+    this.emailInput = contactTextInputs.nth(4);
     this.cityInput = page.locator('input[placeholder="Почніть вводити назву"]');
     this.pickupDeliveryOption = page.locator('text=Самовивіз із магазину');
     this.shopSelectDropdown = page.locator('span.iSel.sel', { hasText: 'Виберіть магазин' }).nth(1);
