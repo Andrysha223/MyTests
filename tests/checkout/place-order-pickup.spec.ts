@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { LegoBrandPage } from '../pages/LegoBrandPage';
 import { LoginPage } from '../pages/LoginPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
+import { ThankYouPage } from '../pages/ThankYouPage';
 import { CartPage } from '../pages/CartPage';
 
 const EMAIL = process.env['LOGIN_EMAIL'];
@@ -25,6 +26,7 @@ test('Оформление заказа с самовывозом и оплат�
   const brandPage = new LegoBrandPage(page);
   const loginPage = new LoginPage(page);
   const checkoutPage = new CheckoutPage(page);
+  const thankYouPage = new ThankYouPage(page);
   const cartPage = new CartPage(page);
 
   await test.step('Login', async () => {
@@ -61,20 +63,20 @@ test('Оформление заказа с самовывозом и оплат�
   });
 
   await test.step('Verify order confirmation', async () => {
-    await expect(checkoutPage.successMessage).toBeVisible();
-    await expect(checkoutPage.orderNumber).toBeVisible();
+    await expect(thankYouPage.successMessage).toBeVisible();
+    await expect(thankYouPage.orderNumber).toBeVisible();
 
     // Номер заказа на странице должен совпадать с orderId из ответа API,
     // а не просто быть "каким-то числом".
-    const orderNumberOnPage = await checkoutPage.getOrderNumberFromPage();
+    const orderNumberOnPage = await thankYouPage.getOrderNumberFromPage();
     expect(orderNumberOnPage).toBe(String(orderIdFromApi));
 
     // Данные в блоке "Інформація про замовлення" должны совпадать с тем,
     // что реально выбирали на шагах 2-3, а не показывать дефолт/старое значение.
-    await expect(checkoutPage.orderDeliveryMethod).toBeVisible();
-    await expect(checkoutPage.orderShopAddress(SHOP_NAME_CONTAINS)).toBeVisible();
-    await expect(checkoutPage.orderPaymentMethod).toBeVisible();
-    await expect(checkoutPage.orderProductName(PRODUCT_NAME)).toBeVisible();
+    await expect(thankYouPage.orderDeliveryMethod).toBeVisible();
+    await expect(thankYouPage.orderShopAddress(SHOP_NAME_CONTAINS)).toBeVisible();
+    await expect(thankYouPage.orderPaymentMethod).toBeVisible();
+    await expect(thankYouPage.orderProductName(PRODUCT_NAME)).toBeVisible();
   });
 
   await test.step('Verify cart is empty after order', async () => {

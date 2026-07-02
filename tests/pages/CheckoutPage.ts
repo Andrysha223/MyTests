@@ -20,12 +20,6 @@ export class CheckoutPage {
   // отдельного локатора для выбора не нужно.
   readonly placeOrderButton: Locator;
 
-  // Страница подтверждения /ukr/thankyou/.
-  readonly successMessage: Locator;
-  readonly orderNumber: Locator;
-  readonly orderDeliveryMethod: Locator;
-  readonly orderPaymentMethod: Locator;
-
   constructor(page: Page) {
     this.page = page;
     this.startCheckoutButton = page.locator('text=Оформити замовлення');
@@ -34,27 +28,6 @@ export class CheckoutPage {
     this.pickupDeliveryOption = page.locator('text=Самовивіз із магазину');
     this.shopSelectDropdown = page.locator('span.iSel.sel', { hasText: 'Виберіть магазин' }).nth(1);
     this.placeOrderButton = page.locator('input[type="submit"][value="Оформити замовлення"]:visible');
-    this.successMessage = page.locator('text=Вітаємо, замовлення успішно оформлено.');
-    this.orderNumber = page.locator('text=/№\\d+/');
-    // Блок "Інформація про замовлення" на странице подтверждения дублирует то,
-    // что выбиралось на шагах 2-3 — сверяем, что реально сохранилось нужное.
-    this.orderDeliveryMethod = page.getByText('Самовивіз із магазину');
-    this.orderPaymentMethod = page.getByText('При отриманні (готівкою/карткою)');
-  }
-
-  // Адрес магазина зависит от того, что выбрали на шаге 2 (параметризовано в тесте).
-  orderShopAddress(shopNameContains: string): Locator {
-    return this.page.getByText(shopNameContains, { exact: false });
-  }
-
-  orderProductName(productName: string): Locator {
-    return this.page.getByText(productName, { exact: false });
-  }
-
-  // Извлекает числовой ID заказа из текста "№990004339".
-  async getOrderNumberFromPage(): Promise<string> {
-    const text = await this.orderNumber.textContent();
-    return (text ?? '').replace('№', '').trim();
   }
 
   async startCheckout() {
