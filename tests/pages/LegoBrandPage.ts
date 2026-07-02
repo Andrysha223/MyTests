@@ -25,10 +25,20 @@ export class LegoBrandPage {
     return this.page.locator('.goodsItem', { hasText: productName });
   }
 
-  async addToCart(productName: string) {
+  buyButton(productName: string): Locator {
+    return this.productCard(productName).locator('a.addPTBj');
+  }
+
+  // Кнопка "Купити" на карточці показується лише по hover,
+  // тому перед перевіркою видимості чи кліком картку треба навести.
+  async hoverProductCard(productName: string) {
     const card = this.productCard(productName);
     await card.scrollIntoViewIfNeeded();
     await card.hover();
-    await card.locator('a.addPTBj').click();
+  }
+
+  async addToCart(productName: string) {
+    await this.hoverProductCard(productName);
+    await this.buyButton(productName).click();
   }
 }

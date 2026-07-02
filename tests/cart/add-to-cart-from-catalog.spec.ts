@@ -18,6 +18,11 @@ test('Проверка добавления товара в коризну, че
     await brandPage.goto();
   });
 
+  await test.step('Verify buy button is visible', async () => {
+    await brandPage.hoverProductCard(PRODUCT_NAME);
+    await expect(brandPage.buyButton(PRODUCT_NAME)).toBeVisible();
+  });
+
   // Подписываемся на ответы ДО клика по "Купити" — иначе можно
   // пропустить событие, если запрос улетит раньше, чем начнётся await.
   const addToCartApiResponse = page.waitForResponse(
