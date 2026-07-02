@@ -2,7 +2,7 @@ import { Page, Locator } from '@playwright/test';
 
 export class CartPage {
   readonly page: Page;
-  readonly url = 'https://bi.ua/ukr/basket/cart/';
+  readonly url = 'https://web1-bi.ua/ukr/basket/cart/';
   readonly headerCartCounter: Locator;
 
   constructor(page: Page) {

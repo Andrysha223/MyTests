@@ -2,7 +2,7 @@ import { Page, Locator } from '@playwright/test';
 
 export class HomePage {
   readonly page: Page;
-  readonly url = 'https://bi.ua/ukr/';
+  readonly url = 'https://web1-bi.ua/ukr/';
   readonly cookieAcceptButton: Locator;
 
   constructor(page: Page) {

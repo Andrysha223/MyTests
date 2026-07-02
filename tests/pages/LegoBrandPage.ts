@@ -2,11 +2,12 @@ import { Page, Locator } from '@playwright/test';
 
 export class LegoBrandPage {
   readonly page: Page;
-  readonly url = 'https://bi.ua/ukr/brands/lego/';
+  readonly url: string;
   readonly cookieAcceptButton: Locator;
 
-  constructor(page: Page) {
+  constructor(page: Page, url = 'https://web1-bi.ua/ukr/brands/lego/') {
     this.page = page;
+    this.url = url;
     this.cookieAcceptButton = page.locator('button.cookie_accept');
   }
 
@@ -40,5 +41,15 @@ export class LegoBrandPage {
   async addToCart(productName: string) {
     await this.hoverProductCard(productName);
     await this.buyButton(productName).click();
+  }
+
+  productLink(productName: string): Locator {
+    return this.productCard(productName).locator('a.goodsItemLink').first();
+  }
+
+  async openProduct(productName: string) {
+    const card = this.productCard(productName);
+    await card.scrollIntoViewIfNeeded();
+    await this.productLink(productName).click();
   }
 }
