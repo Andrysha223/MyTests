@@ -27,9 +27,37 @@ test('Авторизация по email через хедер (web1-bi.ua)', asy
     await page.waitForURL('**/login/**');
   });
 
+  let tokenResponseStatus: number;
+  let tokenResponseBody: any;
+
   await test.step('Login with email and password', async () => {
-    await loginPage.login(EMAIL!, PASSWORD!);
+    // Тело ответа нужно прочитать сразу, пока не началась навигация на /lk/ —
+    // после неё Chromium выгружает буфер ответа и response.json() падает
+    // с "No resource with given identifier found".
+    const [tokenResponse] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/api/v1/oauth2/token') && r.request().method() === 'POST',
+      ),
+      loginPage.login(EMAIL!, PASSWORD!),
+    ]);
+    tokenResponseStatus = tokenResponse.status();
+    tokenResponseBody = await tokenResponse.json();
+
     await page.waitForURL('**/lk/**');
+  });
+
+  await test.step('Verify auth token is issued', async () => {
+    expect(tokenResponseStatus!).toBe(200);
+
+    const accessToken = tokenResponseBody?.data?.access_token;
+    expect(
+      accessToken,
+      `Access token отсутствует в ответе: ${JSON.stringify(tokenResponseBody)}`,
+    ).toBeTruthy();
+    const cookies = await page.context().cookies();
+    const tokenCookie = cookies.find((c) => c.name === 'access_token');
+    expect(tokenCookie, 'Cookie "access_token" не найдена после логина').toBeTruthy();
+    expect(tokenCookie!.value).toBe(accessToken);
   });
 
   await test.step('Verify user is logged in', async () => {
