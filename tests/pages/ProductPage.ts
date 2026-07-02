@@ -1,16 +1,17 @@
 import { Page, Locator } from '@playwright/test';
+import { HeaderComponent } from './HeaderComponent';
 
 export class ProductPage {
   readonly page: Page;
   readonly url: string;
-  readonly cookieAcceptButton: Locator;
+  readonly header: HeaderComponent;
   readonly title: Locator;
   readonly buyButton: Locator;
 
   constructor(page: Page, url: string) {
     this.page = page;
     this.url = url;
-    this.cookieAcceptButton = page.locator('button.cookie_accept');
+    this.header = new HeaderComponent(page);
     this.title = page.locator('h1');
     // На странице товара несколько ссылок "Купити" (похожі товари в каруселях),
     // основна кнопка лежить у блоці .prodBuy.
@@ -19,13 +20,7 @@ export class ProductPage {
 
   async goto() {
     await this.page.goto(this.url);
-    await this.acceptCookiesIfVisible();
-  }
-
-  async acceptCookiesIfVisible() {
-    if (await this.cookieAcceptButton.isVisible().catch(() => false)) {
-      await this.cookieAcceptButton.click();
-    }
+    await this.header.acceptCookiesIfVisible();
   }
 
   async clickBuy() {

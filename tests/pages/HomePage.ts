@@ -1,23 +1,18 @@
-import { Page, Locator } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { HeaderComponent } from './HeaderComponent';
 
 export class HomePage {
   readonly page: Page;
   readonly url = 'https://web1-bi.ua/ukr/';
-  readonly cookieAcceptButton: Locator;
+  readonly header: HeaderComponent;
 
   constructor(page: Page) {
     this.page = page;
-    this.cookieAcceptButton = page.locator('button.cookie_accept');
+    this.header = new HeaderComponent(page);
   }
 
   async goto() {
     await this.page.goto(this.url);
-    await this.acceptCookiesIfVisible();
-  }
-
-  async acceptCookiesIfVisible() {
-    if (await this.cookieAcceptButton.isVisible().catch(() => false)) {
-      await this.cookieAcceptButton.click();
-    }
+    await this.header.acceptCookiesIfVisible();
   }
 }

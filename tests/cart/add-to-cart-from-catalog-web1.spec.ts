@@ -54,6 +54,6 @@ test('Проверка добавления товара в корзину че�
   });
 
   await test.step('Verify header cart counter is updated', async () => {
-    await expect(cartPage.headerCartCounter).toHaveText('1');
+    await expect(brandPage.header.cartCounter).toHaveText('1');
   });
 });

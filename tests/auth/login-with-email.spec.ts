@@ -23,7 +23,7 @@ test('Авторизация по email через хедер (web1-bi.ua)', asy
   });
 
   await test.step('Open login page from header', async () => {
-    await loginPage.openFromHeader();
+    await homePage.header.openLogin();
     await page.waitForURL('**/login/**');
   });
 
@@ -61,7 +61,7 @@ test('Авторизация по email через хедер (web1-bi.ua)', asy
   });
 
   await test.step('Verify user is logged in', async () => {
-    await expect(loginPage.headerAccountLink).toBeVisible();
-    await expect(loginPage.logoutLink).toBeVisible();
+    await expect(homePage.header.accountLink).toBeVisible();
+    await expect(homePage.header.logoutLink).toBeVisible();
   });
 });

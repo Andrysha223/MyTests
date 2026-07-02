@@ -3,11 +3,9 @@ import { Page, Locator } from '@playwright/test';
 export class CartPage {
   readonly page: Page;
   readonly url = 'https://web1-bi.ua/ukr/basket/cart/';
-  readonly headerCartCounter: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.headerCartCounter = page.locator('.cartCounterJs');
   }
 
   async goto() {

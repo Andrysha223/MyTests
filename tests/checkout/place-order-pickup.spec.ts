@@ -3,7 +3,6 @@ import { LegoBrandPage } from '../pages/LegoBrandPage';
 import { LoginPage } from '../pages/LoginPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 import { ThankYouPage } from '../pages/ThankYouPage';
-import { CartPage } from '../pages/CartPage';
 
 const EMAIL = process.env['LOGIN_EMAIL'];
 const PASSWORD = process.env['LOGIN_PASSWORD'];
@@ -34,11 +33,10 @@ test('Оформление заказа с самовывозом и оплат�
   const loginPage = new LoginPage(page);
   const checkoutPage = new CheckoutPage(page);
   const thankYouPage = new ThankYouPage(page);
-  const cartPage = new CartPage(page);
 
   await test.step('Login', async () => {
     await brandPage.goto();
-    await loginPage.openFromHeader();
+    await brandPage.header.openLogin();
     await page.waitForURL('**/login/**');
     await loginPage.login(EMAIL!, PASSWORD!);
     await page.waitForURL('**/lk/**');
@@ -97,6 +95,6 @@ test('Оформление заказа с самовывозом и оплат�
   });
 
   await test.step('Verify cart is empty after order', async () => {
-    await expect(cartPage.headerCartCounter).toHaveText('0');
+    await expect(brandPage.header.cartCounter).toHaveText('0');
   });
 });
