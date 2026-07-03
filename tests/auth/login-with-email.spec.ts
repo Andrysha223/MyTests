@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { HomePage } from '../pages/HomePage';
 import { LoginPage } from '../pages/LoginPage';
+import { CartPage } from '../pages/CartPage';
 
 const EMAIL = process.env['LOGIN_EMAIL'];
 const PASSWORD = process.env['LOGIN_PASSWORD'];
@@ -17,12 +18,13 @@ test('Авторизация по email через хедер (web1-bi.ua)', asy
 
   const homePage = new HomePage(page);
   const loginPage = new LoginPage(page);
+  const cartPage = new CartPage(page);
 
-  await test.step('Open home page', async () => {
+  await test.step('Открыть главную страницу', async () => {
     await homePage.goto();
   });
 
-  await test.step('Open login page from header', async () => {
+  await test.step('Открыть страницу логина через хедер', async () => {
     await homePage.header.openLogin();
     await page.waitForURL('**/login/**');
   });
@@ -30,7 +32,7 @@ test('Авторизация по email через хедер (web1-bi.ua)', asy
   let tokenResponseStatus: number;
   let tokenResponseBody: any;
 
-  await test.step('Login with email and password', async () => {
+  await test.step('Авторизоваться по email и паролю', async () => {
     // Тело ответа нужно прочитать сразу, пока не началась навигация на /lk/ —
     // после неё Chromium выгружает буфер ответа и response.json() падает
     // с "No resource with given identifier found".
@@ -46,7 +48,7 @@ test('Авторизация по email через хедер (web1-bi.ua)', asy
     await page.waitForURL('**/lk/**');
   });
 
-  await test.step('Verify auth token is issued', async () => {
+  await test.step('Проверить, что токен авторизации выдан', async () => {
     expect(tokenResponseStatus!).toBe(200);
 
     const accessToken = tokenResponseBody?.data?.access_token;
@@ -60,8 +62,15 @@ test('Авторизация по email через хедер (web1-bi.ua)', asy
     expect(tokenCookie!.value).toBe(accessToken);
   });
 
-  await test.step('Verify user is logged in', async () => {
+  await test.step('Проверить, что пользователь авторизован', async () => {
     await expect(homePage.header.accountLink).toBeVisible();
     await expect(homePage.header.logoutLink).toBeVisible();
+  });
+
+  await test.step('Очистить корзину', async () => {
+    // Тестовый аккаунт общий для всех тестов — в корзине могут остаться
+    // посторонние товары с прошлых прогонов/промо сайта. Чистим после
+    // каждого логина, чтобы следующие тесты стартовали с пустой корзины.
+    await cartPage.clearCart();
   });
 });

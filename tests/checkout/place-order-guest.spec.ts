@@ -27,38 +27,37 @@ test('Оформление заказа неавторизованным пол�
   const thankYouPage = new ThankYouPage(page);
   const contactDetails = generateRandomContactDetails();
 
-  await test.step('Add product to cart as guest', async () => {
+  await test.step('Добавить товар в корзину как гость', async () => {
     await brandPage.goto();
     await brandPage.addToCart(PRODUCT_NAME);
     await page.waitForURL('**/basket/cart/**');
   });
 
-  await test.step('Start checkout', async () => {
+  await test.step('Начать оформление заказа', async () => {
     await checkoutPage.startCheckout();
   });
 
-  await test.step('Fill random contact details', async () => {
+  await test.step('Заполнить случайные контактные данные', async () => {
     await checkoutPage.fillContactDetails(contactDetails);
     await checkoutPage.confirmContactDetails();
   });
 
-  await test.step('Choose pickup delivery (any available shop)', async () => {
+  await test.step('Выбрать самовывоз (любой доступный магазин)', async () => {
     await checkoutPage.selectPickupInCity(CITY);
   });
 
   let orderIdFromApi: number;
 
-  await test.step('Place order (pay on pickup)', async () => {
+  await test.step('Оформить заказ (оплата при получении)', async () => {
     const order = await checkoutPage.placeOrder();
     orderIdFromApi = order.orderId;
   });
 
-  await test.step('Verify order confirmation', async () => {
+  await test.step('Проверить подтверждение заказа', async () => {
     await expect(thankYouPage.successMessage).toBeVisible();
     await expect(thankYouPage.orderNumber).toBeVisible();
 
-    // Номер заказа на странице должен совпадать с orderId из ответа API,
-    // а не просто быть "каким-то числом".
+    // Номер заказа на странице должен совпадать с orderId из ответа API
     const orderNumberOnPage = await thankYouPage.getOrderNumberFromPage();
     expect(orderNumberOnPage).toBe(String(orderIdFromApi));
 

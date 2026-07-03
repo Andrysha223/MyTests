@@ -19,11 +19,11 @@ test('Проверка добавления товара в корзину че�
   const brandPage = new LegoBrandPage(page);
   const cartPage = new CartPage(page);
 
-  await test.step('Open LEGO catalog page', async () => {
+  await test.step('Открыть страницу каталога LEGO', async () => {
     await brandPage.goto();
   });
 
-  await test.step('Verify buy button is visible', async () => {
+  await test.step('Проверить видимость кнопки «Купити»', async () => {
     await brandPage.hoverProductCard(PRODUCT_NAME);
     await expect(brandPage.buyButton(PRODUCT_NAME)).toBeVisible();
   });
@@ -35,7 +35,7 @@ test('Проверка добавления товара в корзину че�
     (r) => r.url().includes('/api/v1/basket/goods') && r.request().method() === 'GET',
   );
 
-  await test.step('Add product to cart', async () => {
+  await test.step('Добавить товар в корзину', async () => {
     await brandPage.addToCart(PRODUCT_NAME);
 
     const response = await addToCartApiResponse;
@@ -45,7 +45,7 @@ test('Проверка добавления товара в корзину че�
     await page.waitForURL('**/basket/cart/**');
   });
 
-  await test.step('Verify product is in the cart', async () => {
+  await test.step('Проверить, что товар в корзине', async () => {
     await expect(cartPage.cartItem(PRODUCT_NAME)).toBeVisible();
 
     const response = await cartGoodsApiResponse;
@@ -53,7 +53,7 @@ test('Проверка добавления товара в корзину че�
     expectProductInBasketResponse(await response.json(), PRODUCT_NAME, PRODUCT_ARTICLE);
   });
 
-  await test.step('Verify header cart counter is updated', async () => {
+  await test.step('Проверить обновление счётчика корзины в хедере', async () => {
     await expect(brandPage.header.cartCounter).toHaveText('1');
   });
 });

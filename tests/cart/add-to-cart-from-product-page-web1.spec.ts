@@ -24,20 +24,20 @@ test('Проверка добавления товара в корзину со 
   const productPage = new ProductPage(page, PRODUCT_URL);
   const cartPage = new CartPage(page);
 
-  await test.step('Open LEGO catalog page', async () => {
+  await test.step('Открыть страницу каталога LEGO', async () => {
     await brandPage.goto();
   });
 
-  await test.step('Open product page from catalog', async () => {
+  await test.step('Перейти на страницу товара из каталога', async () => {
     await brandPage.openProduct(PRODUCT_NAME);
     await page.waitForURL('**/product/**');
   });
 
-  await test.step('Verify buy button is visible', async () => {
+  await test.step('Проверить видимость кнопки «Купити»', async () => {
     await expect(productPage.buyButton).toBeVisible();
   });
 
-  await test.step('Verify product name', async () => {
+  await test.step('Проверить название товара', async () => {
     await expect(productPage.title).toHaveText(PRODUCT_NAME);
   });
 
@@ -48,7 +48,7 @@ test('Проверка добавления товара в корзину со 
     (r) => r.url().includes('/api/v1/basket/goods') && r.request().method() === 'GET',
   );
 
-  await test.step('Click buy button', async () => {
+  await test.step('Нажать кнопку «Купити»', async () => {
     await productPage.clickBuy();
 
     const response = await addToCartApiResponse;
@@ -58,7 +58,7 @@ test('Проверка добавления товара в корзину со 
     await page.waitForURL('**/basket/cart/**');
   });
 
-  await test.step('Verify product is in the cart', async () => {
+  await test.step('Проверить, что товар в корзине', async () => {
     await expect(cartPage.cartItem(PRODUCT_NAME)).toBeVisible();
 
     const response = await cartGoodsApiResponse;
@@ -66,7 +66,7 @@ test('Проверка добавления товара в корзину со 
     expectProductInBasketResponse(await response.json(), PRODUCT_NAME, PRODUCT_ARTICLE);
   });
 
-  await test.step('Verify header cart counter is updated', async () => {
+  await test.step('Проверить обновление счётчика корзины в хедере', async () => {
     await expect(productPage.header.cartCounter).toHaveText('1');
   });
 });

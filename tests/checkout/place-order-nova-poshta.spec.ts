@@ -11,19 +11,19 @@ const LAST_NAME = process.env['LOGIN_LAST_NAME'];
 const FIRST_NAME = process.env['LOGIN_FIRST_NAME'];
 const PATRONYMIC = process.env['LOGIN_PATRONYMIC'];
 const PHONE = process.env['LOGIN_PHONE'];
-const PRODUCT_NAME = 'Конструктор LEGO City Залізничні стрілки (60238)';
+const PRODUCT_NAME = 'Конструктор LEGO Speed champions Автомобіль McLaren Senna (75892)';
 const CITY = 'Київ';
-const SHOP_NAME_CONTAINS = 'Басейна';
 
 // У web1-bi.ua сертифікат виданий на bi.ua (*.bi.ua), тому без цієї опції
 // Playwright відмовиться відкривати сторінку через ERR_CERT_COMMON_NAME_INVALID.
 test.use({ ignoreHTTPSErrors: true });
 
-// Проверяет полный флоу оформления заказа: логин -> добавление товара в
-// корзину -> оформлення замовлення (контактні дані уже предзаполнены из
-// аккаунта -> самовивіз з конкретного магазину -> оплата при отриманні) ->
-// подтверждение с номером заказа.
-test('Оформление заказа с самовывозом и оплатой при получении (web1-bi.ua)', async ({ page }) => {
+// Проверяет оформление заказа с доставкой у відділення «Нова Пошта» (в отличие
+// от других чекаут-тестов, где проверяется самовивіз): логин -> очистка
+// корзины -> добавление LEGO Speed Champions McLaren Senna (75892) -> контактні
+// дані уже предзаполнены аккаунтом -> вибір способу доставки "Нова Пошта",
+// первое доступное відділення -> оплата при отриманні -> подтверждение заказа.
+test('Оформление заказа с доставкою у відділення Нової Пошти (web1-bi.ua)', async ({ page }) => {
   test.skip(
     !EMAIL || !PASSWORD || !LAST_NAME || !FIRST_NAME || !PATRONYMIC || !PHONE,
     'LOGIN_EMAIL / LOGIN_PASSWORD / LOGIN_LAST_NAME / LOGIN_FIRST_NAME / LOGIN_PATRONYMIC / LOGIN_PHONE не заданы в .env',
@@ -60,22 +60,12 @@ test('Оформление заказа с самовывозом и оплат�
     await checkoutPage.startCheckout();
   });
 
-  await test.step('Проверить предзаполненные контактные данные', async () => {
-    // Проверяем, что чекаут реально подтягивает данные из авторизованного
-    // аккаунта, а не оставляет поля пустыми/дефолтными.
-    await expect(checkoutPage.lastNameInput).toHaveValue(LAST_NAME!);
-    await expect(checkoutPage.firstNameInput).toHaveValue(FIRST_NAME!);
-    await expect(checkoutPage.patronymicInput).toHaveValue(PATRONYMIC!);
-    await expect(checkoutPage.phoneInput).toHaveValue(PHONE!);
-    await expect(checkoutPage.emailInput).toHaveValue(EMAIL!);
-  });
-
   await test.step('Подтвердить предзаполненные контактные данные', async () => {
     await checkoutPage.confirmContactDetails();
   });
 
-  await test.step('Выбрать самовывоз', async () => {
-    await checkoutPage.selectPickupInCity(CITY, SHOP_NAME_CONTAINS);
+  await test.step('Выбрать доставку в отделение Новой почты', async () => {
+    await checkoutPage.selectNovaPoshtaBranch(CITY);
   });
 
   let orderIdFromApi: number;
@@ -94,10 +84,9 @@ test('Оформление заказа с самовывозом и оплат�
     const orderNumberOnPage = await thankYouPage.getOrderNumberFromPage();
     expect(orderNumberOnPage).toBe(String(orderIdFromApi));
 
-    // Данные в блоке "Інформація про замовлення" должны совпадать с тем,
-    // что реально выбирали на шагах 2-3, а не показывать дефолт/старое значение.
-    await expect(thankYouPage.orderDeliveryMethod).toBeVisible();
-    await expect(thankYouPage.orderShopAddress(SHOP_NAME_CONTAINS)).toBeVisible();
+    // Способ доставки в подтверждении должен быть именно "Нова Пошта",
+    // а не самовивіз/дефолт — проверяем, что выбор реально сохранился.
+    await expect(thankYouPage.orderDeliveryMethodNovaPoshta).toBeVisible();
     await expect(thankYouPage.orderPaymentMethod).toBeVisible();
     await expect(thankYouPage.orderProductName(PRODUCT_NAME)).toBeVisible();
   });

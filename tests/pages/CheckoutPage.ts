@@ -22,6 +22,11 @@ export class CheckoutPage {
   // У некоторых элементов формы на странице есть скрытый (visibility:hidden) дубль —
   // поэтому большинство локаторов ниже фильтруются через :visible.
   readonly shopSelectDropdown: Locator;
+  readonly novaPoshtaDeliveryOption: Locator;
+  // Плейсхолдер "Виберіть номер відділення" одинаковый сразу у 3 способов
+  // доставки (Нова Пошта у відділення / Justin / Укрпошта), поэтому в DOM
+  // одновременно 3 таких инпута — фильтр :visible оставляет только активный.
+  readonly branchInput: Locator;
 
   // Шаг 3: Метод оплати. По умолчанию выбран безопасный вариант "При отриманні" —
   // отдельного локатора для выбора не нужно.
@@ -39,8 +44,14 @@ export class CheckoutPage {
     this.emailInput = contactTextInputs.nth(4);
     this.cityInput = page.locator('input[placeholder="Почніть вводити назву"]');
     this.pickupDeliveryOption = page.locator('text=Самовивіз із магазину');
-    this.shopSelectDropdown = page.locator('span.iSel.sel:visible', { hasText: 'Виберіть магазин' });
-    this.placeOrderButton = page.locator('input[type="submit"][value="Оформити замовлення"]:visible');
+    this.shopSelectDropdown = page.locator('span.iSel.sel:visible', {
+      hasText: 'Виберіть магазин',
+    });
+    this.novaPoshtaDeliveryOption = page.locator('text=У відділення «Нова Пошта»');
+    this.branchInput = page.locator('input[placeholder="Виберіть номер відділення"]:visible');
+    this.placeOrderButton = page.locator(
+      'input[type="submit"][value="Оформити замовлення"]:visible',
+    );
   }
 
   async startCheckout() {
@@ -145,6 +156,33 @@ export class CheckoutPage {
     await this.placeOrderButton.waitFor({ state: 'visible' });
   }
 
+  // branchNumberQuery не задан — берём первое отделение, совпавшее с "1"
+  // (в списке всегда много отделений с "1" в номере). Конкретное отделение
+  // здесь не принципиально для теста, важен сам способ доставки.
+  async selectNovaPoshtaBranch(city: string, branchNumberQuery = '1') {
+    await this.cityInput.pressSequentially(city.slice(0, 2), { delay: 50 });
+    const cityOption = this.page.locator(`text=м. ${city}`).first();
+    await cityOption.waitFor({ state: 'visible' });
+    await cityOption.click();
+    await this.page.waitForTimeout(500);
+
+    await this.novaPoshtaDeliveryOption.click();
+    await this.page.waitForTimeout(500);
+
+    await this.branchInput.pressSequentially(branchNumberQuery, { delay: 50 });
+    await this.page.waitForTimeout(800);
+    // Опции отделения используют тот же класс, что и опции магазина
+    // самовивозу, и так же имеют скрытые дубли — фильтруем через :visible.
+    await this.page.locator('li.iSelOp:visible').first().click();
+    await this.page.waitForTimeout(500);
+
+    await this.page.locator('input[type="submit"][value="Далі"]:visible').first().click();
+    // Дожидаемся, пока реально отрисуется шаг 3 (метод оплаты) — иначе
+    // клик по "Оформити замовлення" в placeOrder() может произойти
+    // до того, как кнопка станет кликабельной, и запрос не улетит вовсе.
+    await this.placeOrderButton.waitFor({ state: 'visible' });
+  }
+
   // Шаг 3 (метод оплаты) не требует действий — по умолчанию выбрано
   // безопасное "При отриманні (готівкою/карткою)", без ввода платёжних данных.
   // Тело ответа читаем сразу после resolve, до навигации на /thankyou/ —
@@ -158,9 +196,7 @@ export class CheckoutPage {
   // У гостевого (неавторизованного) чекаута на шаге 3 есть дополнительный
   // чекбокс согласия с "Публічним договором купівлі-продажу" — он НЕ отмечен
   // по умолчанию и без него сабмит молча не срабатывает (клик проходит, но
-  // запрос на сервер не уходит вовсе — раньше это ошибочно списывалось на
-  // ту же нестабильную reCAPTCHA). У авторизованных пользователей такого
-  // чекбокса нет вообще, поэтому отмечаем его только если он есть на странице.
+  // запрос на сервер не уходит вовсе.
   //
   // Сам <input type="checkbox"> скрыт (визуально стилизован через соседний
   // <div class="check">), и его checked-состояние управляется JS/Vue, а не
@@ -170,7 +206,9 @@ export class CheckoutPage {
   async placeOrder(): Promise<{ orderId: number }> {
     await this.placeOrderButton.waitFor({ state: 'visible' });
 
-    const consentLabel = this.page.locator('li', { has: this.page.locator('text=Публічним договором') });
+    const consentLabel = this.page.locator('li', {
+      has: this.page.locator('text=Публічним договором'),
+    });
     if (await consentLabel.isVisible().catch(() => false)) {
       await consentLabel.locator('div.check').click();
     }
@@ -184,7 +222,10 @@ export class CheckoutPage {
     let orderResponse;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        [orderResponse] = await Promise.all([waitForOrderResponse(), this.placeOrderButton.click()]);
+        [orderResponse] = await Promise.all([
+          waitForOrderResponse(),
+          this.placeOrderButton.click(),
+        ]);
         break;
       } catch (error) {
         if (attempt === 3) throw error;
