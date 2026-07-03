@@ -166,7 +166,7 @@ test('Оформление заказа с доставкою у відділе�
       name: PRODUCT_NAME,
       code: productCodeFromApi,
       price: productPriceFromApi,
-      quantity: 2,
+      quantity: 1,
     });
 
     // Стоимость доставки на странице подтверждения должна совпадать с той,
