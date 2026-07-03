@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { ThankYouPage } from '../pages/ThankYouPage';
 
 // Ищем совпадение сразу по article и name, чтобы тест падал,
@@ -29,23 +29,33 @@ export async function expectOrderProductDetails(
   thankYouPage: ThankYouPage,
   details: { name: string; code: number; price: number; quantity: number },
 ) {
-  await expect(
-    thankYouPage.orderProductName(details.name),
-    `В заказе должен быть указан товар «${details.name}»`,
-  ).toBeVisible();
-  await expect(
-    thankYouPage.orderProductCode(details.code),
-    `В заказе должен быть указан код товара "${details.code}"`,
-  ).toBeVisible();
-  await expect(
-    thankYouPage.orderProductQuantity(details.quantity),
-    `В заказе должно быть указано количество "${details.quantity} шт."`,
-  ).toBeVisible();
+  await test.step(`Проверить название товара «${details.name}»`, async () => {
+    await expect(
+      thankYouPage.orderProductName(details.name),
+      `В заказе должен быть указан товар «${details.name}»`,
+    ).toBeVisible();
+  });
 
-  const productsTotalOnPage = await thankYouPage.getProductsTotalFromPage();
-  const expectedTotal = details.price * details.quantity;
-  expect(
-    productsTotalOnPage,
-    `Сумма товаров на странице подтверждения ("${productsTotalOnPage} ₴") должна совпадать с ожидаемой суммой (цена ${details.price} ₴ × ${details.quantity} шт. = ${expectedTotal} ₴)`,
-  ).toBe(expectedTotal);
+  await test.step(`Проверить код товара "${details.code}"`, async () => {
+    await expect(
+      thankYouPage.orderProductCode(details.code),
+      `В заказе должен быть указан код товара "${details.code}"`,
+    ).toBeVisible();
+  });
+
+  await test.step(`Проверить количество "${details.quantity} шт."`, async () => {
+    await expect(
+      thankYouPage.orderProductQuantity(details.quantity),
+      `В заказе должно быть указано количество "${details.quantity} шт."`,
+    ).toBeVisible();
+  });
+
+  await test.step(`Проверить сумму товаров (цена ${details.price} ₴ × ${details.quantity} шт.)`, async () => {
+    const productsTotalOnPage = await thankYouPage.getProductsTotalFromPage();
+    const expectedTotal = details.price * details.quantity;
+    expect(
+      productsTotalOnPage,
+      `Сумма товаров на странице подтверждения ("${productsTotalOnPage} ₴") совпадает с ожидаемой суммой (цена ${details.price} ₴ × ${details.quantity} шт. = ${expectedTotal} ₴)`,
+    ).toBe(expectedTotal);
+  });
 }
