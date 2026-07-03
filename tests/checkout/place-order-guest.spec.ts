@@ -1,0 +1,69 @@
+import { test, expect } from '@playwright/test';
+import { LegoBrandPage } from '../pages/LegoBrandPage';
+import { CheckoutPage } from '../pages/CheckoutPage';
+import { ThankYouPage } from '../pages/ThankYouPage';
+import { generateRandomContactDetails } from '../helpers/randomData';
+
+const PRODUCT_NAME = 'Конструктор LEGO City Залізничні стрілки (60238)';
+const CITY = 'Київ';
+
+// У web1-bi.ua сертифікат виданий на bi.ua (*.bi.ua), тому без цієї опції
+// Playwright відмовиться відкривати сторінку через ERR_CERT_COMMON_NAME_INVALID.
+test.use({ ignoreHTTPSErrors: true });
+
+// Проверяет оформление заказа НЕавторизованным (гостевым) пользователем со
+// случайными контактными данными: без логина добавляем товар в корзину,
+// на шаге 1 сами заполняем сгенерированные ФИО/телефон/email (в отличие от
+// авторизованного флоу — там поля уже предзаполнены аккаунтом), выбираем
+// самовивіз (первый доступный магазин — конкретный адрес тут не принципиален,
+// в отличие от авторизованного теста) и оплату при отриманні, подтверждаем.
+test('Оформление заказа неавторизованным пользователем со случайными данными (web1-bi.ua)', async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+
+  const brandPage = new LegoBrandPage(page);
+  const checkoutPage = new CheckoutPage(page);
+  const thankYouPage = new ThankYouPage(page);
+  const contactDetails = generateRandomContactDetails();
+
+  await test.step('Add product to cart as guest', async () => {
+    await brandPage.goto();
+    await brandPage.addToCart(PRODUCT_NAME);
+    await page.waitForURL('**/basket/cart/**');
+  });
+
+  await test.step('Start checkout', async () => {
+    await checkoutPage.startCheckout();
+  });
+
+  await test.step('Fill random contact details', async () => {
+    await checkoutPage.fillContactDetails(contactDetails);
+    await checkoutPage.confirmContactDetails();
+  });
+
+  await test.step('Choose pickup delivery (any available shop)', async () => {
+    await checkoutPage.selectPickupInCity(CITY);
+  });
+
+  let orderIdFromApi: number;
+
+  await test.step('Place order (pay on pickup)', async () => {
+    const order = await checkoutPage.placeOrder();
+    orderIdFromApi = order.orderId;
+  });
+
+  await test.step('Verify order confirmation', async () => {
+    await expect(thankYouPage.successMessage).toBeVisible();
+    await expect(thankYouPage.orderNumber).toBeVisible();
+
+    // Номер заказа на странице должен совпадать с orderId из ответа API,
+    // а не просто быть "каким-то числом".
+    const orderNumberOnPage = await thankYouPage.getOrderNumberFromPage();
+    expect(orderNumberOnPage).toBe(String(orderIdFromApi));
+
+    await expect(thankYouPage.orderDeliveryMethod).toBeVisible();
+    await expect(thankYouPage.orderPaymentMethod).toBeVisible();
+    await expect(thankYouPage.orderProductName(PRODUCT_NAME)).toBeVisible();
+  });
+});
