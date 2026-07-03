@@ -10,6 +10,7 @@ export class ThankYouPage {
   // 2-3 чекаута — сверяем, что реально сохранилось нужное.
   readonly orderDeliveryMethod: Locator;
   readonly orderDeliveryMethodNovaPoshta: Locator;
+  readonly orderDeliveryMethodUkrPoshta: Locator;
   readonly orderPaymentMethod: Locator;
   // Строка таблицы "Вартість доставки: 30 грн." в блоке "Інформація про замовлення".
   readonly orderDeliveryCostRow: Locator;
@@ -20,6 +21,7 @@ export class ThankYouPage {
     this.orderNumber = page.locator('text=/№\\d+/');
     this.orderDeliveryMethod = page.getByText('Самовивіз із магазину');
     this.orderDeliveryMethodNovaPoshta = page.getByText('У відділення «Нова Пошта»');
+    this.orderDeliveryMethodUkrPoshta = page.getByText('У відділення Укрпошта');
     this.orderPaymentMethod = page.getByText('При отриманні (готівкою/карткою)');
     this.orderDeliveryCostRow = page.locator('tr', { has: page.locator('text=Вартість доставки') });
   }

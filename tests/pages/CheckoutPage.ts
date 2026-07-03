@@ -23,6 +23,7 @@ export class CheckoutPage {
   // поэтому большинство локаторов ниже фильтруются через :visible.
   readonly shopSelectDropdown: Locator;
   readonly novaPoshtaDeliveryOption: Locator;
+  readonly ukrPoshtaDeliveryOption: Locator;
   // Плейсхолдер "Виберіть номер відділення" одинаковый сразу у 3 способов
   // доставки (Нова Пошта у відділення / Укрпошта), поэтому в DOM
   // одновременно 3 таких инпута — фильтр :visible оставляет только активный.
@@ -51,6 +52,7 @@ export class CheckoutPage {
       hasText: 'Виберіть магазин',
     });
     this.novaPoshtaDeliveryOption = page.locator('text=У відділення «Нова Пошта»');
+    this.ukrPoshtaDeliveryOption = page.locator('text=У відділення Укрпошта');
     this.branchInput = page.locator('input[placeholder="Виберіть номер відділення"]:visible');
     this.deliveryCostInCheckout = page
       .locator('li.chPrice', { hasText: 'Доставка:' })
@@ -185,19 +187,22 @@ export class CheckoutPage {
     await this.placeOrderButton.waitFor({ state: 'visible' });
   }
 
-  // branchNumberQuery не задан — берём первое отделение, совпавшее с "1"
-  // (в списке всегда много отделений с "1" в номере). Конкретное отделение
-  // здесь не принципиально для теста, важен сам способ доставки.
+  // Общая логика для способов доставки "в отделение" (Нова Пошта / Укрпошта) —
+  // отличаются только radio-опция и codeName в ответе API. branchNumberQuery
+  // не задан — берём первое отделение, совпавшее с "1" (в списке всегда много
+  // отделений с "1" в номере), конкретное отделение не принципиально для теста.
   //
-  // Возвращает стоимость доставки "У відділення «Нова Пошта»" (в грн) из
-  // ответа, пойманного ещё в confirmContactDetails() (см. getDeliveryPrice).
-  // По этому значению тест сверяет то, что реально показывается в сайдбаре
-  // чекаута и на странице подтверждения.
-  async selectNovaPoshtaBranch(
+  // Возвращает стоимость доставки (в грн) из ответа, пойманного ещё в
+  // confirmContactDetails() (см. getDeliveryPrice). По этому значению тест
+  // сверяет то, что реально показывается в сайдбаре чекаута и на странице
+  // подтверждения.
+  private async selectBranchDelivery(
+    deliveryOption: Locator,
+    codeName: string,
     city: string,
-    branchNumberQuery = '1',
+    branchNumberQuery: string,
   ): Promise<{ deliveryPrice: number }> {
-    const deliveryPrice = await this.getDeliveryPrice('StorehouseNovaposta');
+    const deliveryPrice = await this.getDeliveryPrice(codeName);
 
     await this.cityInput.pressSequentially(city.slice(0, 2), { delay: 50 });
     const cityOption = this.page.locator(`text=м. ${city}`).first();
@@ -205,7 +210,7 @@ export class CheckoutPage {
     await cityOption.click();
     await this.page.waitForTimeout(500);
 
-    await this.novaPoshtaDeliveryOption.click();
+    await deliveryOption.click();
     await this.page.waitForTimeout(500);
 
     await this.branchInput.pressSequentially(branchNumberQuery, { delay: 50 });
@@ -222,6 +227,30 @@ export class CheckoutPage {
     await this.placeOrderButton.waitFor({ state: 'visible' });
 
     return { deliveryPrice: deliveryPrice! };
+  }
+
+  async selectNovaPoshtaBranch(
+    city: string,
+    branchNumberQuery = '1',
+  ): Promise<{ deliveryPrice: number }> {
+    return this.selectBranchDelivery(
+      this.novaPoshtaDeliveryOption,
+      'StorehouseNovaposta',
+      city,
+      branchNumberQuery,
+    );
+  }
+
+  // У Укрпошти список відділень грузится сразу целиком (без запроса по мере
+  // ввода, в отличие от Нової Пошти), а автокомплит фильтрует по подстроке
+  // в ПОЛНОМ отображаемом тексте "№XXXXX, вул. ...". Запрос "1" совпадений не
+  // даёт (значит, отфильтровывается не по номеру), а "вул" — стабильно один
+  // результат, поэтому дефолт здесь отличается от Нової Пошти.
+  async selectUkrPoshtaBranch(
+    city: string,
+    branchNumberQuery = 'вул',
+  ): Promise<{ deliveryPrice: number }> {
+    return this.selectBranchDelivery(this.ukrPoshtaDeliveryOption, 'Ukrposhta', city, branchNumberQuery);
   }
 
   // Шаг 3 (метод оплаты) не требует действий — по умолчанию выбрано
