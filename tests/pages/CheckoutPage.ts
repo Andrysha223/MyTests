@@ -23,11 +23,14 @@ export class CheckoutPage {
   // поэтому большинство локаторов ниже фильтруются через :visible.
   readonly shopSelectDropdown: Locator;
   readonly novaPoshtaDeliveryOption: Locator;
+  readonly postomatDeliveryOption: Locator;
   readonly ukrPoshtaDeliveryOption: Locator;
   readonly courierDeliveryOption: Locator;
-  // Плейсхолдер "Виберіть номер відділення" одинаковый сразу у 3 способов
-  // доставки (Нова Пошта у відділення / Укрпошта), поэтому в DOM
-  // одновременно 3 таких инпута — фильтр :visible оставляет только активный.
+  // Плейсхолдер начинается с "Виберіть номер ..." одинаково у всех способов
+  // доставки "в пункт" (відділення/поштомат Нової Пошти, Укрпошта), поэтому
+  // в DOM одновременно несколько таких инпутов — фильтр :visible оставляет
+  // только активный, а префиксный селектор покрывает разный текст в конце
+  // ("відділення" / "поштомата").
   readonly branchInput: Locator;
   // Поля адреса для кур'єрської доставки — появляются после выбора
   // "Кур'єром «Нова Пошта»" вместо поля выбора відділення.
@@ -58,9 +61,10 @@ export class CheckoutPage {
       hasText: 'Виберіть магазин',
     });
     this.novaPoshtaDeliveryOption = page.locator('text=У відділення «Нова Пошта»');
+    this.postomatDeliveryOption = page.locator('text=У поштоматі «Нова Пошта»');
     this.ukrPoshtaDeliveryOption = page.locator('text=У відділення Укрпошта');
     this.courierDeliveryOption = page.locator("text=Кур'єром «Нова Пошта»");
-    this.branchInput = page.locator('input[placeholder="Виберіть номер відділення"]:visible');
+    this.branchInput = page.locator('input[placeholder^="Виберіть номер"]:visible');
     this.streetInput = page.locator('input[placeholder="Вулиця"]');
     this.houseNumberInput = page.locator('input[placeholder="№ Будинку"]');
     this.apartmentNumberInput = page.locator('input[placeholder="№ Квартири"]');
@@ -263,6 +267,16 @@ export class CheckoutPage {
     return this.selectBranchDelivery(this.ukrPoshtaDeliveryOption, 'Ukrposhta', city, branchNumberQuery);
   }
 
+  // Поштомат «Нова Пошта» — тот же принцип пошуку відділення, що й в
+  // Укрпошти: запит "1" не дає збігів (список поштоматів не фільтрується по
+  // номеру), тому дефолтна query — "вул".
+  async selectPostomatDelivery(
+    city: string,
+    branchNumberQuery = 'вул',
+  ): Promise<{ deliveryPrice: number }> {
+    return this.selectBranchDelivery(this.postomatDeliveryOption, 'NpCell', city, branchNumberQuery);
+  }
+
   // Кур'єрська доставка — единственный способ доставки "в отделение", у неё
   // вместо выбора відділення нужно заполнить адрес: Вулиця (тоже автокомплит,
   // как city/branch — печатаем и выбираем из выпадающего списка), № Будинку
@@ -353,6 +367,51 @@ export class CheckoutPage {
     }
 
     const body = await orderResponse!.json();
+
+    await this.page.waitForURL('**/thankyou/**');
+
+    return { orderId: body?.data?.orderId };
+  }
+
+  // У доставки "У поштоматі «Нова Пошта»" єдиний доступний спосіб оплати —
+  // "Карткою на сайті" (він же відмічений за замовчуванням, окремого кліку
+  // не треба; способу "При отриманні" тут просто немає в списку).
+  //
+  // Клік по "Оформити замовлення" одразу створює замовлення і переадресовує
+  // на зовнішній домен LiqPay (www.liqpay.ua) — а не напряму на /thankyou/,
+  // як у інших способів оплати. Тест не повинен реально оплачувати замовлення
+  // карткою, тому на сторінці LiqPay натискаємо посилання скасування оплати
+  // (текст залежить від локалі браузера — "Скасувати оплату" укр. або
+  // "Decline payment" англ.), після чого LiqPay сам повертає користувача
+  // назад на /ukr/thankyou/ зі статусом "Очікування платежу".
+  async placeOrderAndDeclineCardPayment(): Promise<{ orderId: number }> {
+    await this.placeOrderButton.waitFor({ state: 'visible' });
+
+    const waitForOrderResponse = () =>
+      this.page.waitForResponse(
+        (r) => r.url().includes('/api/v1/orders/order') && r.request().method() === 'POST',
+        { timeout: 15000 },
+      );
+
+    let orderResponse;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        [orderResponse] = await Promise.all([
+          waitForOrderResponse(),
+          this.placeOrderButton.click(),
+        ]);
+        break;
+      } catch (error) {
+        if (attempt === 3) throw error;
+      }
+    }
+
+    const body = await orderResponse!.json();
+
+    await this.page.waitForURL(/liqpay\.ua/, { timeout: 20000 });
+
+    const declinePaymentLink = this.page.getByText(/Скасувати оплату|Decline payment/i);
+    await declinePaymentLink.click();
 
     await this.page.waitForURL('**/thankyou/**');
 

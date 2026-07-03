@@ -13,11 +13,18 @@ export class ThankYouPage {
   readonly orderDeliveryMethodUkrPoshta: Locator;
   readonly orderDeliveryMethodCourier: Locator;
   readonly orderPaymentMethod: Locator;
+  // Способ оплаты картой на сайте (LiqPay) — вместо "При отриманні" у заказов
+  // с доставкой у поштомат «Нова Пошта» (там нет варианта оплаты при получении).
+  readonly orderPaymentMethodCard: Locator;
   // Строка таблицы "Вартість доставки: 30 грн." в блоке "Інформація про замовлення".
   readonly orderDeliveryCostRow: Locator;
   // Строка "Адреса доставки  м. Київ, ..., вул. Хрещатик, буд. 1, кв. 1" —
   // появляется только для кур'єрської доставки (у "в відділення"/самовивозу её нет).
   readonly orderDeliveryAddressRow: Locator;
+  // "Статус оплати: Очікування платежу" — появляется у заказов с оплатой
+  // карткою на сайті, если оплата ещё не прошла (в т.ч. после отмены оплаты
+  // на стороне LiqPay) — у заказов "При отриманні" этой строки нет.
+  readonly orderPaymentStatusPending: Locator;
   // Строка "Товарів на суму: 483 ₴" в блоке "Ваші товари:" — суммарная
   // стоимость товаров без учёта доставки.
   readonly orderProductsTotalRow: Locator;
@@ -31,8 +38,10 @@ export class ThankYouPage {
     this.orderDeliveryMethodUkrPoshta = page.getByText('У відділення Укрпошта');
     this.orderDeliveryMethodCourier = page.getByText("Кур'єром «Нова Пошта»");
     this.orderPaymentMethod = page.getByText('При отриманні (готівкою/карткою)');
+    this.orderPaymentMethodCard = page.getByText('Карткою на сайті');
     this.orderDeliveryCostRow = page.locator('tr', { has: page.locator('text=Вартість доставки') });
     this.orderDeliveryAddressRow = page.locator('tr', { has: page.locator('text=Адреса доставки') });
+    this.orderPaymentStatusPending = page.getByText('Очікування платежу');
     this.orderProductsTotalRow = page.locator('li.fJbAc', { hasText: 'Товарів на суму' });
   }
 
