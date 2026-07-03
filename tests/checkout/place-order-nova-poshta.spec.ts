@@ -60,6 +60,31 @@ test('Оформление заказа с доставкою у відділе�
     await checkoutPage.startCheckout();
   });
 
+  await test.step('Проверить предзаполненные контактные данные', async () => {
+    // Проверяем, что чекаут реально подтягивает данные из авторизованного
+    // аккаунта, а не оставляет поля пустыми/дефолтными.
+    await expect(
+      checkoutPage.lastNameInput,
+      'Поле «Прізвище» должно быть предзаполнено фамилией из аккаунта',
+    ).toHaveValue(LAST_NAME!);
+    await expect(
+      checkoutPage.firstNameInput,
+      "Поле «Ім'я» должно быть предзаполнено именем из аккаунта",
+    ).toHaveValue(FIRST_NAME!);
+    await expect(
+      checkoutPage.patronymicInput,
+      'Поле «По-батькові» должно быть предзаполнено отчеством из аккаунта',
+    ).toHaveValue(PATRONYMIC!);
+    await expect(
+      checkoutPage.phoneInput,
+      'Поле «Номер телефону» должно быть предзаполнено телефоном из аккаунта',
+    ).toHaveValue(PHONE!);
+    await expect(
+      checkoutPage.emailInput,
+      'Поле «Email» должно быть предзаполнено почтой из аккаунта',
+    ).toHaveValue(EMAIL!);
+  });
+
   await test.step('Подтвердить предзаполненные контактные данные', async () => {
     await checkoutPage.confirmContactDetails();
   });
