@@ -15,19 +15,23 @@ const PHONE = process.env['LOGIN_PHONE'];
 const PRODUCT_NAME = 'Конструктор LEGO Speed champions Автомобіль McLaren Senna (75892)';
 const PRODUCT_ARTICLE = '75892';
 const CITY = 'Київ';
+const STREET = 'Хрещатик';
+const HOUSE_NUMBER = '1';
+const APARTMENT_NUMBER = '1';
 
 // У web1-bi.ua сертифікат виданий на bi.ua (*.bi.ua), тому без цієї опції
 // Playwright відмовиться відкривати сторінку через ERR_CERT_COMMON_NAME_INVALID.
 test.use({ ignoreHTTPSErrors: true });
 
-// Проверяет оформление заказа с доставкой у відділення Укрпошта (аналогично
-// place-order-nova-poshta.spec.ts, но другой спосіб доставки): логин ->
-// очистка корзины -> добавление LEGO Speed Champions McLaren Senna (75892) ->
-// проверка предзаполненных контактних даних (как в place-order-pickup) ->
-// вибір способу доставки "Укрпошта", первое доступное відділення ->
-// проверка стоимости доставки в чекауте и на странице подтверждения (как
+// Проверяет оформление заказа с кур'єрською доставкою «Нова Пошта» (аналогично
+// place-order-nova-poshta/place-order-ukrposhta, но другой спосіб доставки —
+// вместо выбора відділення заполняется адрес): логин -> очистка корзины ->
+// добавление LEGO Speed Champions McLaren Senna (75892) -> проверка
+// предзаполненных контактних даних (как в place-order-pickup) -> вибір
+// способу доставки "Кур'єром «Нова Пошта»" с адресом (вулиця/будинок/квартира)
+// -> проверка стоимости доставки в чекауте и на странице подтверждения (как
 // в place-order-nova-poshta) -> оплата при отриманні -> подтверждение заказа.
-test('Оформление заказа с доставкою у відділення Укрпошти (web1-bi.ua)', async ({ page }) => {
+test("Оформление заказа с кур'єрською доставкою «Нова Пошта» (web1-bi.ua)", async ({ page }) => {
   test.skip(
     !EMAIL || !PASSWORD || !LAST_NAME || !FIRST_NAME || !PATRONYMIC || !PHONE,
     'LOGIN_EMAIL / LOGIN_PASSWORD / LOGIN_LAST_NAME / LOGIN_FIRST_NAME / LOGIN_PATRONYMIC / LOGIN_PHONE не заданы в .env',
@@ -110,8 +114,13 @@ test('Оформление заказа с доставкою у відділе�
 
   let deliveryPriceFromApi: number;
 
-  await test.step('Выбрать доставку в отделение Укрпошты', async () => {
-    const delivery = await checkoutPage.selectUkrPoshtaBranch(CITY);
+  await test.step("Выбрать кур'єрську доставку Нової Пошти", async () => {
+    const delivery = await checkoutPage.selectCourierDelivery(
+      CITY,
+      STREET,
+      HOUSE_NUMBER,
+      APARTMENT_NUMBER,
+    );
     deliveryPriceFromApi = delivery.deliveryPrice;
   });
 
@@ -149,17 +158,17 @@ test('Оформление заказа с доставкою у відділе�
       `Номер заказа на странице ("${orderNumberOnPage}") должен совпадать с orderId из ответа API ("${orderIdFromApi}")`,
     ).toBe(String(orderIdFromApi));
 
-    // Способ доставки в подтверждении должен быть именно "Укрпошта",
-    // а не самовивіз/Нова Пошта/дефолт — проверяем, что выбор реально сохранился.
+    // Способ доставки в подтверждении должен быть именно "Кур'єром «Нова
+    // Пошта»", а не самовивіз/відділення/дефолт — проверяем, что выбор
+    // реально сохранился.
     await expect(
-      thankYouPage.orderDeliveryMethodUkrPoshta,
-      'В подтверждении заказа должен быть указан способ доставки «У відділення Укрпошта»',
+      thankYouPage.orderDeliveryMethodCourier,
+      "В подтверждении заказа должен быть указан способ доставки «Кур'єром «Нова Пошта»»",
     ).toBeVisible();
     await expect(
       thankYouPage.orderPaymentMethod,
       'В подтверждении заказа должен быть указан способ оплаты «При отриманні (готівкою/карткою)»',
     ).toBeVisible();
-
     // Название, код товара, количество и сумма должны совпадать с тем, что
     // реально вернул API при добавлении в корзину, а не быть дефолтом/пустым.
     await expectOrderProductDetails(thankYouPage, {
@@ -177,6 +186,15 @@ test('Оформление заказа с доставкою у відділе�
       deliveryCostOnThankYouPage,
       `Стоимость доставки на странице подтверждения ("${deliveryCostOnThankYouPage} грн.") должна совпадать со стоимостью из API ("${deliveryPriceFromApi} ₴")`,
     ).toBe(deliveryPriceFromApi);
+
+    // Строка "Адреса доставки" появляется только у кур'єрської доставки —
+    // проверяем, что в ней реально те улица/дом/квартира, что вводили на
+    // шаге 2, а не пустое/дефолтное значение. Формат: "вул. {street}, буд.
+    // {house}, кв. {apartment}" (город стоит перед этим через запятую).
+    await expect(
+      thankYouPage.orderDeliveryAddressRow,
+      `В подтверждении заказа должен быть указан адрес доставки "вул. ${STREET}, буд. ${HOUSE_NUMBER}, кв. ${APARTMENT_NUMBER}"`,
+    ).toContainText(`вул. ${STREET}, буд. ${HOUSE_NUMBER}, кв. ${APARTMENT_NUMBER}`);
   });
 
   await test.step('Проверить, что корзина пуста после заказа', async () => {

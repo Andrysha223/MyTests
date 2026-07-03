@@ -24,10 +24,16 @@ export class CheckoutPage {
   readonly shopSelectDropdown: Locator;
   readonly novaPoshtaDeliveryOption: Locator;
   readonly ukrPoshtaDeliveryOption: Locator;
+  readonly courierDeliveryOption: Locator;
   // Плейсхолдер "Виберіть номер відділення" одинаковый сразу у 3 способов
   // доставки (Нова Пошта у відділення / Укрпошта), поэтому в DOM
   // одновременно 3 таких инпута — фильтр :visible оставляет только активный.
   readonly branchInput: Locator;
+  // Поля адреса для кур'єрської доставки — появляются после выбора
+  // "Кур'єром «Нова Пошта»" вместо поля выбора відділення.
+  readonly streetInput: Locator;
+  readonly houseNumberInput: Locator;
+  readonly apartmentNumberInput: Locator;
   // Строка "Доставка: 30 ₴" в сайдбаре "Ваше замовлення" — появляется после
   // выбора способу доставки (видна начиная с шага 3).
   readonly deliveryCostInCheckout: Locator;
@@ -53,7 +59,11 @@ export class CheckoutPage {
     });
     this.novaPoshtaDeliveryOption = page.locator('text=У відділення «Нова Пошта»');
     this.ukrPoshtaDeliveryOption = page.locator('text=У відділення Укрпошта');
+    this.courierDeliveryOption = page.locator("text=Кур'єром «Нова Пошта»");
     this.branchInput = page.locator('input[placeholder="Виберіть номер відділення"]:visible');
+    this.streetInput = page.locator('input[placeholder="Вулиця"]');
+    this.houseNumberInput = page.locator('input[placeholder="№ Будинку"]');
+    this.apartmentNumberInput = page.locator('input[placeholder="№ Квартири"]');
     this.deliveryCostInCheckout = page
       .locator('li.chPrice', { hasText: 'Доставка:' })
       .locator('.cost');
@@ -251,6 +261,46 @@ export class CheckoutPage {
     branchNumberQuery = 'вул',
   ): Promise<{ deliveryPrice: number }> {
     return this.selectBranchDelivery(this.ukrPoshtaDeliveryOption, 'Ukrposhta', city, branchNumberQuery);
+  }
+
+  // Кур'єрська доставка — единственный способ доставки "в отделение", у неё
+  // вместо выбора відділення нужно заполнить адрес: Вулиця (тоже автокомплит,
+  // как city/branch — печатаем и выбираем из выпадающего списка), № Будинку
+  // и № Квартири (обычные текстовые поля, без маски/автокомплита).
+  async selectCourierDelivery(
+    city: string,
+    street: string,
+    houseNumber: string,
+    apartmentNumber: string,
+  ): Promise<{ deliveryPrice: number }> {
+    const deliveryPrice = await this.getDeliveryPrice('Courier');
+
+    await this.cityInput.pressSequentially(city.slice(0, 2), { delay: 50 });
+    const cityOption = this.page.locator(`text=м. ${city}`).first();
+    await cityOption.waitFor({ state: 'visible' });
+    await cityOption.click();
+    await this.page.waitForTimeout(500);
+
+    await this.courierDeliveryOption.click();
+    await this.page.waitForTimeout(500);
+
+    await this.streetInput.pressSequentially(street, { delay: 50 });
+    await this.page.waitForTimeout(1000);
+    // Как и у відділень, опции улиц имеют скрытые дубли — фильтруем через :visible.
+    await this.page.locator('li.iSelOp:visible', { hasText: street }).first().click();
+    await this.page.waitForTimeout(500);
+
+    await this.houseNumberInput.pressSequentially(houseNumber, { delay: 30 });
+    await this.apartmentNumberInput.pressSequentially(apartmentNumber, { delay: 30 });
+    await this.page.waitForTimeout(500);
+
+    await this.page.locator('input[type="submit"][value="Далі"]:visible').first().click();
+    // Дожидаемся, пока реально отрисуется шаг 3 (метод оплаты) — иначе
+    // клик по "Оформити замовлення" в placeOrder() может произойти
+    // до того, как кнопка станет кликабельной, и запрос не улетит вовсе.
+    await this.placeOrderButton.waitFor({ state: 'visible' });
+
+    return { deliveryPrice: deliveryPrice! };
   }
 
   // Шаг 3 (метод оплаты) не требует действий — по умолчанию выбрано

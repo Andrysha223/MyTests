@@ -4,6 +4,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 import { ThankYouPage } from '../pages/ThankYouPage';
 import { CartPage } from '../pages/CartPage';
+import { getProductFromBasketResponse, expectOrderProductDetails } from '../helpers/basket';
 
 const EMAIL = process.env['LOGIN_EMAIL'];
 const PASSWORD = process.env['LOGIN_PASSWORD'];
@@ -12,6 +13,7 @@ const FIRST_NAME = process.env['LOGIN_FIRST_NAME'];
 const PATRONYMIC = process.env['LOGIN_PATRONYMIC'];
 const PHONE = process.env['LOGIN_PHONE'];
 const PRODUCT_NAME = 'Конструктор LEGO City Залізничні стрілки (60238)';
+const PRODUCT_ARTICLE = '60238';
 const CITY = 'Київ';
 const SHOP_NAME_CONTAINS = 'Басейна';
 
@@ -50,9 +52,24 @@ test('Оформление заказа с самовывозом и оплат�
     await cartPage.clearCart();
   });
 
+  let productCodeFromApi: number;
+  let productPriceFromApi: number;
+
   await test.step('Добавить товар в корзину', async () => {
+    const addToCartApiResponse = page.waitForResponse(
+      (r) => r.url().includes('/api/v1/basket/good') && r.request().method() === 'POST',
+    );
+
     await brandPage.goto();
     await brandPage.addToCart(PRODUCT_NAME);
+
+    const product = getProductFromBasketResponse(
+      await (await addToCartApiResponse).json(),
+      PRODUCT_ARTICLE,
+    );
+    productCodeFromApi = product?.code;
+    productPriceFromApi = product?.price;
+
     await page.waitForURL('**/basket/cart/**');
   });
 
@@ -132,10 +149,15 @@ test('Оформление заказа с самовывозом и оплат�
       thankYouPage.orderPaymentMethod,
       'В подтверждении заказа должен быть указан способ оплаты «При отриманні (готівкою/карткою)»',
     ).toBeVisible();
-    await expect(
-      thankYouPage.orderProductName(PRODUCT_NAME),
-      `В заказе должен быть указан товар «${PRODUCT_NAME}»`,
-    ).toBeVisible();
+
+    // Название, код товара, количество и сумма должны совпадать с тем, что
+    // реально вернул API при добавлении в корзину, а не быть дефолтом/пустым.
+    await expectOrderProductDetails(thankYouPage, {
+      name: PRODUCT_NAME,
+      code: productCodeFromApi,
+      price: productPriceFromApi,
+      quantity: 1,
+    });
   });
 
   await test.step('Проверить, что корзина пуста после заказа', async () => {
