@@ -24,7 +24,7 @@ export class CheckoutPage {
   readonly shopSelectDropdown: Locator;
   readonly novaPoshtaDeliveryOption: Locator;
   // Плейсхолдер "Виберіть номер відділення" одинаковый сразу у 3 способов
-  // доставки (Нова Пошта у відділення / Justin / Укрпошта), поэтому в DOM
+  // доставки (Нова Пошта у відділення / Укрпошта), поэтому в DOM
   // одновременно 3 таких инпута — фильтр :visible оставляет только активный.
   readonly branchInput: Locator;
   // Строка "Доставка: 30 ₴" в сайдбаре "Ваше замовлення" — появляется после
@@ -52,7 +52,9 @@ export class CheckoutPage {
     });
     this.novaPoshtaDeliveryOption = page.locator('text=У відділення «Нова Пошта»');
     this.branchInput = page.locator('input[placeholder="Виберіть номер відділення"]:visible');
-    this.deliveryCostInCheckout = page.locator('li.chPrice', { hasText: 'Доставка:' }).locator('.cost');
+    this.deliveryCostInCheckout = page
+      .locator('li.chPrice', { hasText: 'Доставка:' })
+      .locator('.cost');
     this.placeOrderButton = page.locator(
       'input[type="submit"][value="Оформити замовлення"]:visible',
     );
@@ -191,7 +193,10 @@ export class CheckoutPage {
   // ответа, пойманного ещё в confirmContactDetails() (см. getDeliveryPrice).
   // По этому значению тест сверяет то, что реально показывается в сайдбаре
   // чекаута и на странице подтверждения.
-  async selectNovaPoshtaBranch(city: string, branchNumberQuery = '1'): Promise<{ deliveryPrice: number }> {
+  async selectNovaPoshtaBranch(
+    city: string,
+    branchNumberQuery = '1',
+  ): Promise<{ deliveryPrice: number }> {
     const deliveryPrice = await this.getDeliveryPrice('StorehouseNovaposta');
 
     await this.cityInput.pressSequentially(city.slice(0, 2), { delay: 50 });
