@@ -27,6 +27,9 @@ export class CheckoutPage {
   // доставки (Нова Пошта у відділення / Justin / Укрпошта), поэтому в DOM
   // одновременно 3 таких инпута — фильтр :visible оставляет только активный.
   readonly branchInput: Locator;
+  // Строка "Доставка: 30 ₴" в сайдбаре "Ваше замовлення" — появляется после
+  // выбора способу доставки (видна начиная с шага 3).
+  readonly deliveryCostInCheckout: Locator;
 
   // Шаг 3: Метод оплати. По умолчанию выбран безопасный вариант "При отриманні" —
   // отдельного локатора для выбора не нужно.
@@ -49,6 +52,7 @@ export class CheckoutPage {
     });
     this.novaPoshtaDeliveryOption = page.locator('text=У відділення «Нова Пошта»');
     this.branchInput = page.locator('input[placeholder="Виберіть номер відділення"]:visible');
+    this.deliveryCostInCheckout = page.locator('li.chPrice', { hasText: 'Доставка:' }).locator('.cost');
     this.placeOrderButton = page.locator(
       'input[type="submit"][value="Оформити замовлення"]:visible',
     );
@@ -111,16 +115,39 @@ export class CheckoutPage {
     }
   }
 
+  // Ответ со списком способов доставки и их ценами (GET /api/v1/basket/delivery)
+  // сайт запрашивает сразу при рендере шага 2 — ещё до того, как пользователь
+  // успевает выбрать город или способ доставки. Подписываемся здесь же, в
+  // confirmContactDetails() (переход 1 -> 2), это самое раннее безопасное
+  // место — иначе, если подписаться позже (например, в selectNovaPoshtaBranch),
+  // запрос может успеть улететь и await зависнет до таймаута.
+  private deliveryResponsePromise?: Promise<import('@playwright/test').Response>;
+
   // Поля контактных данных либо уже предзаполнены из аккаунта (авторизованный
   // флоу), либо только что заполнены через fillContactDetails() (гостевой) —
   // в обоих случаях остаётся просто подтвердить их кликом "Далі".
   async confirmContactDetails() {
+    this.deliveryResponsePromise = this.page.waitForResponse(
+      (r) => r.url().includes('/api/v1/basket/delivery') && r.request().method() === 'GET',
+    );
+
     await this.contactDetailsForm.locator('input[type="submit"][value="Далі"]').click();
     // SPA перерисовывает шаг 2 не мгновенно: JS-обработчики на новых полях
     // (автокомплит города) навешиваются с небольшой задержкой после рендера,
     // поэтому печать в cityInput сразу после клика теряется.
     await this.cityInput.waitFor({ state: 'visible' });
     await this.page.waitForTimeout(500);
+  }
+
+  // Возвращает цену конкретного способа доставки (по codeName из ответа API,
+  // например "StorehouseNovaposta") из ответа, пойманного в confirmContactDetails().
+  async getDeliveryPrice(codeName: string): Promise<number | undefined> {
+    if (!this.deliveryResponsePromise) return undefined;
+    const body = await (await this.deliveryResponsePromise).json();
+    const delivery = (body?.data?.delivery ?? []).find(
+      (d: { codeName: string; price: number }) => d.codeName === codeName,
+    );
+    return delivery?.price;
   }
 
   // shopNameContains не задан — берём первый доступный в списке магазин.
@@ -159,7 +186,14 @@ export class CheckoutPage {
   // branchNumberQuery не задан — берём первое отделение, совпавшее с "1"
   // (в списке всегда много отделений с "1" в номере). Конкретное отделение
   // здесь не принципиально для теста, важен сам способ доставки.
-  async selectNovaPoshtaBranch(city: string, branchNumberQuery = '1') {
+  //
+  // Возвращает стоимость доставки "У відділення «Нова Пошта»" (в грн) из
+  // ответа, пойманного ещё в confirmContactDetails() (см. getDeliveryPrice).
+  // По этому значению тест сверяет то, что реально показывается в сайдбаре
+  // чекаута и на странице подтверждения.
+  async selectNovaPoshtaBranch(city: string, branchNumberQuery = '1'): Promise<{ deliveryPrice: number }> {
+    const deliveryPrice = await this.getDeliveryPrice('StorehouseNovaposta');
+
     await this.cityInput.pressSequentially(city.slice(0, 2), { delay: 50 });
     const cityOption = this.page.locator(`text=м. ${city}`).first();
     await cityOption.waitFor({ state: 'visible' });
@@ -181,6 +215,8 @@ export class CheckoutPage {
     // клик по "Оформити замовлення" в placeOrder() может произойти
     // до того, как кнопка станет кликабельной, и запрос не улетит вовсе.
     await this.placeOrderButton.waitFor({ state: 'visible' });
+
+    return { deliveryPrice: deliveryPrice! };
   }
 
   // Шаг 3 (метод оплаты) не требует действий — по умолчанию выбрано

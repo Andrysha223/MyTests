@@ -64,8 +64,20 @@ test('Оформление заказа с доставкою у відділе�
     await checkoutPage.confirmContactDetails();
   });
 
+  let deliveryPriceFromApi: number;
+
   await test.step('Выбрать доставку в отделение Новой почты', async () => {
-    await checkoutPage.selectNovaPoshtaBranch(CITY);
+    const delivery = await checkoutPage.selectNovaPoshtaBranch(CITY);
+    deliveryPriceFromApi = delivery.deliveryPrice;
+  });
+
+  await test.step('Проверить стоимость доставки в чекауте', async () => {
+    // Сверяем, что цена, которую вернул GET /api/v1/basket/delivery,
+    // реально отображается в сайдбаре "Ваше замовлення" на шаге оплаты.
+    await expect(
+      checkoutPage.deliveryCostInCheckout,
+      `В сайдбаре чекаута должна отображаться стоимость доставки "${deliveryPriceFromApi} ₴" из ответа API`,
+    ).toHaveText(`${deliveryPriceFromApi} ₴`);
   });
 
   let orderIdFromApi: number;
@@ -97,7 +109,7 @@ test('Оформление заказа с доставкою у відділе�
     // а не самовивіз/дефолт — проверяем, что выбор реально сохранился.
     await expect(
       thankYouPage.orderDeliveryMethodNovaPoshta,
-      'В подтверждении заказа должен быть указан способ доставки «У відділення «Нова Пошта»», а не самовивіз/дефолт',
+      'В подтверждении заказа должен быть указан способ доставки «У відділення «Нова Пошта»',
     ).toBeVisible();
     await expect(
       thankYouPage.orderPaymentMethod,
@@ -107,6 +119,15 @@ test('Оформление заказа с доставкою у відділе�
       thankYouPage.orderProductName(PRODUCT_NAME),
       `В заказе должен быть указан товар «${PRODUCT_NAME}»`,
     ).toBeVisible();
+
+    // Стоимость доставки на странице подтверждения должна совпадать с той,
+    // что вернул API (см. шаг "Проверить стоимость доставки в чекауте"),
+    // а не быть, например, нулевой/дефолтной.
+    const deliveryCostOnThankYouPage = await thankYouPage.getDeliveryCostFromPage();
+    expect(
+      deliveryCostOnThankYouPage,
+      `Стоимость доставки на странице подтверждения ("${deliveryCostOnThankYouPage} грн.") должна совпадать со стоимостью из API ("${deliveryPriceFromApi} ₴")`,
+    ).toBe(deliveryPriceFromApi);
   });
 
   await test.step('Проверить, что корзина пуста после заказа', async () => {

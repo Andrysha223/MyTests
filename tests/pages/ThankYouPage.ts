@@ -11,6 +11,8 @@ export class ThankYouPage {
   readonly orderDeliveryMethod: Locator;
   readonly orderDeliveryMethodNovaPoshta: Locator;
   readonly orderPaymentMethod: Locator;
+  // Строка таблицы "Вартість доставки: 30 грн." в блоке "Інформація про замовлення".
+  readonly orderDeliveryCostRow: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -19,6 +21,7 @@ export class ThankYouPage {
     this.orderDeliveryMethod = page.getByText('Самовивіз із магазину');
     this.orderDeliveryMethodNovaPoshta = page.getByText('У відділення «Нова Пошта»');
     this.orderPaymentMethod = page.getByText('При отриманні (готівкою/карткою)');
+    this.orderDeliveryCostRow = page.locator('tr', { has: page.locator('text=Вартість доставки') });
   }
 
   // Адрес магазина зависит от того, что выбрали на шаге 2 (параметризовано в тесте).
@@ -34,5 +37,13 @@ export class ThankYouPage {
   async getOrderNumberFromPage(): Promise<string> {
     const text = await this.orderNumber.textContent();
     return (text ?? '').replace('№', '').trim();
+  }
+
+  // Извлекает число из строки "Вартість доставки: 30 грн." (валюта здесь —
+  // слово "грн.", а не символ "₴", как в сайдбаре чекаута).
+  async getDeliveryCostFromPage(): Promise<number> {
+    const text = await this.orderDeliveryCostRow.textContent();
+    const match = (text ?? '').match(/(\d+)\s*грн/);
+    return match ? Number(match[1]) : NaN;
   }
 }
