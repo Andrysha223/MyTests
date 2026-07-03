@@ -76,22 +76,43 @@ test('Оформление заказа с доставкою у відділе�
   });
 
   await test.step('Проверить подтверждение заказа', async () => {
-    await expect(thankYouPage.successMessage).toBeVisible();
-    await expect(thankYouPage.orderNumber).toBeVisible();
+    await expect(
+      thankYouPage.successMessage,
+      'После оформления заказа должно появиться сообщение об успехе на /ukr/thankyou/',
+    ).toBeVisible();
+    await expect(
+      thankYouPage.orderNumber,
+      'На странице подтверждения должен быть виден номер заказа (№...)',
+    ).toBeVisible();
 
     // Номер заказа на странице должен совпадать с orderId из ответа API,
     // а не просто быть "каким-то числом".
     const orderNumberOnPage = await thankYouPage.getOrderNumberFromPage();
-    expect(orderNumberOnPage).toBe(String(orderIdFromApi));
+    expect(
+      orderNumberOnPage,
+      `Номер заказа на странице ("${orderNumberOnPage}") должен совпадать с orderId из ответа API ("${orderIdFromApi}")`,
+    ).toBe(String(orderIdFromApi));
 
     // Способ доставки в подтверждении должен быть именно "Нова Пошта",
     // а не самовивіз/дефолт — проверяем, что выбор реально сохранился.
-    await expect(thankYouPage.orderDeliveryMethodNovaPoshta).toBeVisible();
-    await expect(thankYouPage.orderPaymentMethod).toBeVisible();
-    await expect(thankYouPage.orderProductName(PRODUCT_NAME)).toBeVisible();
+    await expect(
+      thankYouPage.orderDeliveryMethodNovaPoshta,
+      'В подтверждении заказа должен быть указан способ доставки «У відділення «Нова Пошта»», а не самовивіз/дефолт',
+    ).toBeVisible();
+    await expect(
+      thankYouPage.orderPaymentMethod,
+      'В подтверждении заказа должен быть указан способ оплаты «При отриманні (готівкою/карткою)»',
+    ).toBeVisible();
+    await expect(
+      thankYouPage.orderProductName(PRODUCT_NAME),
+      `В заказе должен быть указан товар «${PRODUCT_NAME}»`,
+    ).toBeVisible();
   });
 
   await test.step('Проверить, что корзина пуста после заказа', async () => {
-    await expect(brandPage.header.cartCounter).toHaveText('0');
+    await expect(
+      brandPage.header.cartCounter,
+      'После успешного оформления заказа корзина должна опустеть (счётчик в хедере = 0)',
+    ).toHaveText('0');
   });
 });

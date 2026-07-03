@@ -34,11 +34,17 @@ test('Проверка добавления товара в корзину со 
   });
 
   await test.step('Проверить видимость кнопки «Купити»', async () => {
-    await expect(productPage.buyButton).toBeVisible();
+    await expect(
+      productPage.buyButton,
+      'Основная кнопка «Купити» (в блоке .prodBuy) должна быть видна на странице товара',
+    ).toBeVisible();
   });
 
   await test.step('Проверить название товара', async () => {
-    await expect(productPage.title).toHaveText(PRODUCT_NAME);
+    await expect(
+      productPage.title,
+      'Заголовок страницы товара должен совпадать с ожидаемым названием',
+    ).toHaveText(PRODUCT_NAME);
   });
 
   const addToCartApiResponse = page.waitForResponse(
@@ -52,21 +58,27 @@ test('Проверка добавления товара в корзину со 
     await productPage.clickBuy();
 
     const response = await addToCartApiResponse;
-    expect(response.status()).toBe(200);
+    expect(response.status(), 'Ответ POST /api/v1/basket/good должен быть 200 OK').toBe(200);
     expectProductInBasketResponse(await response.json(), PRODUCT_NAME, PRODUCT_ARTICLE);
 
     await page.waitForURL('**/basket/cart/**');
   });
 
   await test.step('Проверить, что товар в корзине', async () => {
-    await expect(cartPage.cartItem(PRODUCT_NAME)).toBeVisible();
+    await expect(
+      cartPage.cartItem(PRODUCT_NAME),
+      'Товар должен появиться в списке товаров корзины после добавления',
+    ).toBeVisible();
 
     const response = await cartGoodsApiResponse;
-    expect(response.status()).toBe(200);
+    expect(response.status(), 'Ответ GET /api/v1/basket/goods должен быть 200 OK').toBe(200);
     expectProductInBasketResponse(await response.json(), PRODUCT_NAME, PRODUCT_ARTICLE);
   });
 
   await test.step('Проверить обновление счётчика корзины в хедере', async () => {
-    await expect(productPage.header.cartCounter).toHaveText('1');
+    await expect(
+      productPage.header.cartCounter,
+      'Счётчик товаров в хедере должен показывать 1 после добавления товара',
+    ).toHaveText('1');
   });
 });

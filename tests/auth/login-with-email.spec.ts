@@ -49,7 +49,7 @@ test('Авторизация по email через хедер (web1-bi.ua)', asy
   });
 
   await test.step('Проверить, что токен авторизации выдан', async () => {
-    expect(tokenResponseStatus!).toBe(200);
+    expect(tokenResponseStatus!, 'Ответ POST /api/v1/oauth2/token должен быть 200 OK').toBe(200);
 
     const accessToken = tokenResponseBody?.data?.access_token;
     expect(
@@ -59,12 +59,21 @@ test('Авторизация по email через хедер (web1-bi.ua)', asy
     const cookies = await page.context().cookies();
     const tokenCookie = cookies.find((c) => c.name === 'access_token');
     expect(tokenCookie, 'Cookie "access_token" не найдена после логина').toBeTruthy();
-    expect(tokenCookie!.value).toBe(accessToken);
+    expect(
+      tokenCookie!.value,
+      'Значение cookie "access_token" должно совпадать с access_token из ответа API',
+    ).toBe(accessToken);
   });
 
   await test.step('Проверить, что пользователь авторизован', async () => {
-    await expect(homePage.header.accountLink).toBeVisible();
-    await expect(homePage.header.logoutLink).toBeVisible();
+    await expect(
+      homePage.header.accountLink,
+      'После логина в хедере вместо "Вхід" должна появиться ссылка на аккаунт пользователя',
+    ).toBeVisible();
+    await expect(
+      homePage.header.logoutLink,
+      'После логина в хедере должна быть видна ссылка "Вийти"',
+    ).toBeVisible();
   });
 
   await test.step('Очистить корзину', async () => {

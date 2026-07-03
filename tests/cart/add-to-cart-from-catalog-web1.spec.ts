@@ -25,7 +25,10 @@ test('Проверка добавления товара в корзину че�
 
   await test.step('Проверить видимость кнопки «Купити»', async () => {
     await brandPage.hoverProductCard(PRODUCT_NAME);
-    await expect(brandPage.buyButton(PRODUCT_NAME)).toBeVisible();
+    await expect(
+      brandPage.buyButton(PRODUCT_NAME),
+      'Кнопка «Купити» на карточке товара должна быть видна при наведении',
+    ).toBeVisible();
   });
 
   const addToCartApiResponse = page.waitForResponse(
@@ -39,21 +42,27 @@ test('Проверка добавления товара в корзину че�
     await brandPage.addToCart(PRODUCT_NAME);
 
     const response = await addToCartApiResponse;
-    expect(response.status()).toBe(200);
+    expect(response.status(), 'Ответ POST /api/v1/basket/good должен быть 200 OK').toBe(200);
     expectProductInBasketResponse(await response.json(), PRODUCT_NAME, PRODUCT_ARTICLE);
 
     await page.waitForURL('**/basket/cart/**');
   });
 
   await test.step('Проверить, что товар в корзине', async () => {
-    await expect(cartPage.cartItem(PRODUCT_NAME)).toBeVisible();
+    await expect(
+      cartPage.cartItem(PRODUCT_NAME),
+      'Товар должен появиться в списке товаров корзины после добавления',
+    ).toBeVisible();
 
     const response = await cartGoodsApiResponse;
-    expect(response.status()).toBe(200);
+    expect(response.status(), 'Ответ GET /api/v1/basket/goods должен быть 200 OK').toBe(200);
     expectProductInBasketResponse(await response.json(), PRODUCT_NAME, PRODUCT_ARTICLE);
   });
 
   await test.step('Проверить обновление счётчика корзины в хедере', async () => {
-    await expect(brandPage.header.cartCounter).toHaveText('1');
+    await expect(
+      brandPage.header.cartCounter,
+      'Счётчик товаров в хедере должен показывать 1 после добавления товара',
+    ).toHaveText('1');
   });
 });

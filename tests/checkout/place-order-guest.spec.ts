@@ -54,15 +54,33 @@ test('Оформление заказа неавторизованным пол�
   });
 
   await test.step('Проверить подтверждение заказа', async () => {
-    await expect(thankYouPage.successMessage).toBeVisible();
-    await expect(thankYouPage.orderNumber).toBeVisible();
+    await expect(
+      thankYouPage.successMessage,
+      'После оформления заказа должно появиться сообщение об успехе на /ukr/thankyou/',
+    ).toBeVisible();
+    await expect(
+      thankYouPage.orderNumber,
+      'На странице подтверждения должен быть виден номер заказа (№...)',
+    ).toBeVisible();
 
     // Номер заказа на странице должен совпадать с orderId из ответа API
     const orderNumberOnPage = await thankYouPage.getOrderNumberFromPage();
-    expect(orderNumberOnPage).toBe(String(orderIdFromApi));
+    expect(
+      orderNumberOnPage,
+      `Номер заказа на странице ("${orderNumberOnPage}") должен совпадать с orderId из ответа API ("${orderIdFromApi}")`,
+    ).toBe(String(orderIdFromApi));
 
-    await expect(thankYouPage.orderDeliveryMethod).toBeVisible();
-    await expect(thankYouPage.orderPaymentMethod).toBeVisible();
-    await expect(thankYouPage.orderProductName(PRODUCT_NAME)).toBeVisible();
+    await expect(
+      thankYouPage.orderDeliveryMethod,
+      'В подтверждении заказа должен быть указан способ доставки «Самовивіз із магазину»',
+    ).toBeVisible();
+    await expect(
+      thankYouPage.orderPaymentMethod,
+      'В подтверждении заказа должен быть указан способ оплаты «При отриманні (готівкою/карткою)»',
+    ).toBeVisible();
+    await expect(
+      thankYouPage.orderProductName(PRODUCT_NAME),
+      `В заказе должен быть указан товар «${PRODUCT_NAME}»`,
+    ).toBeVisible();
   });
 });

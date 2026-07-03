@@ -63,11 +63,26 @@ test('Оформление заказа с самовывозом и оплат�
   await test.step('Проверить предзаполненные контактные данные', async () => {
     // Проверяем, что чекаут реально подтягивает данные из авторизованного
     // аккаунта, а не оставляет поля пустыми/дефолтными.
-    await expect(checkoutPage.lastNameInput).toHaveValue(LAST_NAME!);
-    await expect(checkoutPage.firstNameInput).toHaveValue(FIRST_NAME!);
-    await expect(checkoutPage.patronymicInput).toHaveValue(PATRONYMIC!);
-    await expect(checkoutPage.phoneInput).toHaveValue(PHONE!);
-    await expect(checkoutPage.emailInput).toHaveValue(EMAIL!);
+    await expect(
+      checkoutPage.lastNameInput,
+      'Поле «Прізвище» должно быть предзаполнено фамилией из аккаунта',
+    ).toHaveValue(LAST_NAME!);
+    await expect(
+      checkoutPage.firstNameInput,
+      'Поле «Ім\'я» должно быть предзаполнено именем из аккаунта',
+    ).toHaveValue(FIRST_NAME!);
+    await expect(
+      checkoutPage.patronymicInput,
+      'Поле «По-батькові» должно быть предзаполнено отчеством из аккаунта',
+    ).toHaveValue(PATRONYMIC!);
+    await expect(
+      checkoutPage.phoneInput,
+      'Поле «Номер телефону» должно быть предзаполнено телефоном из аккаунта',
+    ).toHaveValue(PHONE!);
+    await expect(
+      checkoutPage.emailInput,
+      'Поле «Email» должно быть предзаполнено почтой из аккаунта',
+    ).toHaveValue(EMAIL!);
   });
 
   await test.step('Подтвердить предзаполненные контактные данные', async () => {
@@ -86,23 +101,47 @@ test('Оформление заказа с самовывозом и оплат�
   });
 
   await test.step('Проверить подтверждение заказа', async () => {
-    await expect(thankYouPage.successMessage).toBeVisible();
-    await expect(thankYouPage.orderNumber).toBeVisible();
+    await expect(
+      thankYouPage.successMessage,
+      'После оформления заказа должно появиться сообщение об успехе на /ukr/thankyou/',
+    ).toBeVisible();
+    await expect(
+      thankYouPage.orderNumber,
+      'На странице подтверждения должен быть виден номер заказа (№...)',
+    ).toBeVisible();
 
     // Номер заказа на странице должен совпадать с orderId из ответа API,
     // а не просто быть "каким-то числом".
     const orderNumberOnPage = await thankYouPage.getOrderNumberFromPage();
-    expect(orderNumberOnPage).toBe(String(orderIdFromApi));
+    expect(
+      orderNumberOnPage,
+      `Номер заказа на странице ("${orderNumberOnPage}") должен совпадать с orderId из ответа API ("${orderIdFromApi}")`,
+    ).toBe(String(orderIdFromApi));
 
     // Данные в блоке "Інформація про замовлення" должны совпадать с тем,
     // что реально выбирали на шагах 2-3, а не показывать дефолт/старое значение.
-    await expect(thankYouPage.orderDeliveryMethod).toBeVisible();
-    await expect(thankYouPage.orderShopAddress(SHOP_NAME_CONTAINS)).toBeVisible();
-    await expect(thankYouPage.orderPaymentMethod).toBeVisible();
-    await expect(thankYouPage.orderProductName(PRODUCT_NAME)).toBeVisible();
+    await expect(
+      thankYouPage.orderDeliveryMethod,
+      'В подтверждении заказа должен быть указан способ доставки «Самовивіз із магазину»',
+    ).toBeVisible();
+    await expect(
+      thankYouPage.orderShopAddress(SHOP_NAME_CONTAINS),
+      `В подтверждении заказа должен быть указан магазин самовывоза, содержащий «${SHOP_NAME_CONTAINS}»`,
+    ).toBeVisible();
+    await expect(
+      thankYouPage.orderPaymentMethod,
+      'В подтверждении заказа должен быть указан способ оплаты «При отриманні (готівкою/карткою)»',
+    ).toBeVisible();
+    await expect(
+      thankYouPage.orderProductName(PRODUCT_NAME),
+      `В заказе должен быть указан товар «${PRODUCT_NAME}»`,
+    ).toBeVisible();
   });
 
   await test.step('Проверить, что корзина пуста после заказа', async () => {
-    await expect(brandPage.header.cartCounter).toHaveText('0');
+    await expect(
+      brandPage.header.cartCounter,
+      'После успешного оформления заказа корзина должна опустеть (счётчик в хедере = 0)',
+    ).toHaveText('0');
   });
 });
