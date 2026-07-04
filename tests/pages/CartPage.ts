@@ -12,8 +12,12 @@ export class CartPage {
     await this.page.goto(this.url);
   }
 
+  // На десктопе карточка товара в корзине — ".goodsItem.chGoods", на
+  // мобильной версии тот же товар рендерится без модификатора "chGoods"
+  // (просто ".goodsItem" внутри ".cartWr") — другая адаптивная разметка,
+  // а не просто другой CSS. Матчим оба варианта.
   cartItem(productName: string): Locator {
-    return this.page.locator('.goodsItem.chGoods', { hasText: productName });
+    return this.page.locator('.goodsItem.chGoods, .cartWr .goodsItem', { hasText: productName });
   }
 
   // Тестовый аккаунт общий для всех тестов, и в корзине иногда остаются

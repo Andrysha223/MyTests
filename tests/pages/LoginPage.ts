@@ -11,10 +11,13 @@ export class LoginPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.emailPhoneInput = page.locator('#emailPhone');
-    this.nextButton = page.locator('input[value="Далі"]');
-    this.passwordInput = page.locator('input[type="password"]');
-    this.submitButton = page.locator('input[value="Увійти"]');
+    // На мобильной верстке на странице одновременно рендерятся формы логина
+    // и регистрации с одинаковым id="emailPhone" — фильтруем через :visible,
+    // как и большинство "дублирующихся" элементов на этом сайте.
+    this.emailPhoneInput = page.locator('#emailPhone:visible');
+    this.nextButton = page.locator('input[value="Далі"]:visible');
+    this.passwordInput = page.locator('input[type="password"]:visible');
+    this.submitButton = page.locator('input[value="Увійти"]:visible');
   }
 
   // Форма двухшаговая: сначала email/телефон + "Далі", затем появляется

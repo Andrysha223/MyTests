@@ -89,7 +89,8 @@ export class CheckoutPage {
     this.deliveryValidationHint = page.locator('.hintContent', {
       hasText: 'заповніть усі дані щодо доставки',
     });
-    this.promoCodeLink = page.locator('text=Додати промокод');
+    // Как и многие элементы на этом сайте, имеет скрытый дубль — фильтруем через :visible.
+    this.promoCodeLink = page.locator('span:text("Додати промокод"):visible');
     this.promoCodeInput = page.locator('input[placeholder="Введіть № промокоду"]');
     this.promoCodeApplyButton = page.locator('input[type="button"][value="Застосувати"]');
     this.productsTotalInCheckout = page
@@ -101,8 +102,10 @@ export class CheckoutPage {
     this.totalToPayInCheckout = page
       .locator('li.chPrice', { hasText: 'Всього до сплати:' })
       .locator('.cost');
+    // На мобильной верстке та же кнопка подписана иначе — "Оформлення
+    // замовлення" вместо "Оформити замовлення" (десктоп). Матчим оба текста.
     this.placeOrderButton = page.locator(
-      'input[type="submit"][value="Оформити замовлення"]:visible',
+      'input[type="submit"][value="Оформити замовлення"]:visible, input[type="submit"][value="Оформлення замовлення"]:visible',
     );
   }
 

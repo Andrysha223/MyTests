@@ -10,7 +10,9 @@ export class WishlistPage {
   readonly createListLink: Locator;
   readonly newListNameInput: Locator;
   // На странице одновременно есть скрытый дубль кнопки "Зберегти" (в другом
-  // попапе, #PopAttention) — поэтому берём первую, а не полагаемся на text=.
+  // попапе, #PopAttention). Кроме того, при создании списка с маркетингового
+  // пустого экрана (см. bigCreateListButton) кнопка сохранения — это
+  // <a>Зберегти</a>, а не <input type="submit">, как в остальных случаях.
   readonly saveNewListButton: Locator;
   // Попап "Виберіть список" появляется при добавлении товара в избранное
   // (клик по сердечку в каталоге/на странице товара), если списков больше
@@ -29,7 +31,9 @@ export class WishlistPage {
     this.bigCreateListButton = page.locator('#addNewList');
     this.createListLink = page.locator('span.iaddWL:visible');
     this.newListNameInput = page.locator('input[placeholder="Назвіть список"]');
-    this.saveNewListButton = page.locator('input[type="submit"][value="Зберегти"]').first();
+    this.saveNewListButton = page
+      .locator('input[type="submit"][value="Зберегти"]:visible')
+      .or(page.locator('a:visible', { hasText: 'Зберегти' }));
     this.chooseListPopupTitle = page.locator('text=Виберіть список');
   }
 
@@ -39,7 +43,10 @@ export class WishlistPage {
 
   // Товар в списке ищется по data-good-id (тот же id, что передаётся в
   // rtbWishListAddProduct(id) на карточке каталога), а не по названию — так
-  // проще связать состояние каталога и список бажань в тестах.
+  // проще связать состояние каталога и список бажань в тестах. Без :visible —
+  // на мобильной верстке карточка товара иногда рендерится ТОЛЬКО внутри
+  // скрытого (unAc, display:none) варианта контейнера списка, без видимого
+  // дубля вообще; фильтр :visible в этом случае не находил бы вообще ничего.
   wishlistItem(goodId: string): Locator {
     return this.page.locator(`.goodsItem[data-good-id="${goodId}"]`);
   }
@@ -59,9 +66,14 @@ export class WishlistPage {
   // содержит ровно нужный товар.
   async clearWishlist() {
     await this.goto();
+    // На мобильной верстке товар иногда рендерится ТОЛЬКО в скрытом (unAc,
+    // display:none) варианте контейнера списка — у элемента нет геометрии
+    // вовсе, поэтому даже click({force: true}) не срабатывает ("Element is
+    // not visible"). dispatchEvent('click') шлёт событие напрямую в DOM,
+    // без проверки видимости/координат.
     const deleteButtons = this.page.locator('span.i-delete[name="item_one"]');
     while ((await deleteButtons.count()) > 0) {
-      await deleteButtons.first().click();
+      await deleteButtons.first().dispatchEvent('click');
       await this.page.waitForTimeout(500);
     }
   }
@@ -82,10 +94,11 @@ export class WishlistPage {
 
     // Сохранение реально сабмітить форму на /ukr/lk/wish-list/ (перезагрузка
     // страницы) — ждём саму перезагрузку и появление нового списка по
-    // названию, это надёжнее, чем ссылка "Створити список" (после релоаду
-    // остаётся скрытой ещё какое-то время).
+    // названию. Ждём именно attached, а не visible: на мобильной верстке
+    // список иногда рендерится в скрытом (unAc) варианте контейнера —
+    // тот же сайтовый глюк, что и с товарами (см. wishlistItem()).
     await this.page.waitForLoadState('load');
-    await this.listBlock(name).waitFor({ state: 'visible' });
+    await this.listBlock(name).waitFor({ state: 'attached' });
   }
 
   // Блок конкретного списка бажань (заголовок + его товары) — списки с

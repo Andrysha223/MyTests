@@ -17,8 +17,12 @@ export class LegoBrandPage {
     await this.header.acceptCookiesIfVisible();
   }
 
+  // На странице одновременно может быть несколько карточек с одинаковым
+  // названием (например, скрытая карточка в блоке "Ви переглядали" или в
+  // рекомендациях, без кнопок покупки/бажань) — фильтруем через :visible,
+  // чтобы попадать именно в основную карточку каталога.
   productCard(productName: string): Locator {
-    return this.page.locator('.goodsItem', { hasText: productName });
+    return this.page.locator('.goodsItem:visible', { hasText: productName });
   }
 
   buyButton(productName: string): Locator {
