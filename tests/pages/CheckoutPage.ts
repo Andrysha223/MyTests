@@ -45,6 +45,17 @@ export class CheckoutPage {
   // вибрано конкретне відділення/поштомат зі списку).
   readonly deliveryValidationHint: Locator;
 
+  // Промокод в сайдбаре "Ваше замовлення" — виден на любом шаге чекауту.
+  // По умолчанию свёрнутый в ссылку "Додати промокод", разворачивается кликом.
+  readonly promoCodeLink: Locator;
+  readonly promoCodeInput: Locator;
+  readonly promoCodeApplyButton: Locator;
+  // Строки "Товарів на суму:" / "Знижка:" / "Всього до сплати:" в сайдбаре —
+  // "Знижка:" появляется только после применения промокода/сертифіката.
+  readonly productsTotalInCheckout: Locator;
+  readonly discountInCheckout: Locator;
+  readonly totalToPayInCheckout: Locator;
+
   // Шаг 3: Метод оплати. По умолчанию выбран безопасный вариант "При отриманні" —
   // отдельного локатора для выбора не нужно.
   readonly placeOrderButton: Locator;
@@ -78,9 +89,42 @@ export class CheckoutPage {
     this.deliveryValidationHint = page.locator('.hintContent', {
       hasText: 'заповніть усі дані щодо доставки',
     });
+    this.promoCodeLink = page.locator('text=Додати промокод');
+    this.promoCodeInput = page.locator('input[placeholder="Введіть № промокоду"]');
+    this.promoCodeApplyButton = page.locator('input[type="button"][value="Застосувати"]');
+    this.productsTotalInCheckout = page
+      .locator('li.chPrice', { hasText: 'Товарів на суму:' })
+      .locator('.cost');
+    this.discountInCheckout = page
+      .locator('li.chPrice', { hasText: 'Знижка:' })
+      .locator('.cost');
+    this.totalToPayInCheckout = page
+      .locator('li.chPrice', { hasText: 'Всього до сплати:' })
+      .locator('.cost');
     this.placeOrderButton = page.locator(
       'input[type="submit"][value="Оформити замовлення"]:visible',
     );
+  }
+
+  // Разворачивает блок промокода, вводит код и дожидается ответа
+  // GET /api/v1/basket/promo?promo=... с пересчитанной ценой/знижкою.
+  async applyPromoCode(code: string) {
+    await this.promoCodeLink.click();
+    await this.promoCodeInput.fill(code);
+
+    const promoResponsePromise = this.page.waitForResponse((r) =>
+      r.url().includes('/api/v1/basket/promo'),
+    );
+    await this.promoCodeApplyButton.click();
+    await promoResponsePromise;
+  }
+
+  // Цена конкретного товара в блоке "Ваше замовлення" — после применения
+  // промокода должна показывать уже сниженную цену (например, "799").
+  sidebarProductPrice(productName: string): Locator {
+    return this.page
+      .locator('.goodsItem', { hasText: productName })
+      .locator('p.costIco .mr2');
   }
 
   // Общий локатор инлайновых ошибок валидации полей — на разных полях это то
