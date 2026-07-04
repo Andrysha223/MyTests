@@ -13,6 +13,9 @@ export class HeaderComponent {
   readonly accountLink: Locator;
   readonly logoutLink: Locator;
   readonly cartCounter: Locator;
+  // Ссылка "Бажання" (список избранного) — ведёт на /ukr/lk/wish-list/.
+  readonly favoritesLink: Locator;
+  readonly favoritesCounter: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -23,6 +26,8 @@ export class HeaderComponent {
     // реальная видимая ссылка "Вийти" — это <p class="bOpExit">.
     this.logoutLink = page.locator('p.bOpExit');
     this.cartCounter = page.locator('.cartCounterJs');
+    this.favoritesLink = page.locator('a.hIco.wishj');
+    this.favoritesCounter = this.favoritesLink.locator('.counter');
   }
 
   async acceptCookiesIfVisible() {
