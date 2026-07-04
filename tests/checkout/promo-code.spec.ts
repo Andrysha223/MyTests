@@ -36,8 +36,8 @@ test('Применение промокода на 20% скидки меняет
   const thankYouPage = new ThankYouPage(page);
   const contactDetails = generateRandomContactDetails();
 
-  let productCodeFromApi: number;
-  let productPriceFromApi: number;
+  let productCodeFromApi!: number;
+  let productPriceFromApi!: number;
 
   await test.step('Добавить товар в корзину', async () => {
     const addToCartApiResponse = page.waitForResponse(
@@ -108,7 +108,7 @@ test('Применение промокода на 20% скидки меняет
     await checkoutPage.selectPickupInCity(CITY);
   });
 
-  let orderIdFromApi: number;
+  let orderIdFromApi!: number;
 
   await test.step('Оформить заказ (оплата при получении)', async () => {
     const order = await checkoutPage.placeOrder();
