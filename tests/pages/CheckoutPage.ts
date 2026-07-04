@@ -40,6 +40,10 @@ export class CheckoutPage {
   // Строка "Доставка: 30 ₴" в сайдбаре "Ваше замовлення" — появляется после
   // выбора способу доставки (видна начиная с шага 3).
   readonly deliveryCostInCheckout: Locator;
+  // Общее предупреждение над кнопкою "Далі" на шаге 2 — появляется, если
+  // способ доставки обрано, але не заповнені залежні поля (наприклад, не
+  // вибрано конкретне відділення/поштомат зі списку).
+  readonly deliveryValidationHint: Locator;
 
   // Шаг 3: Метод оплати. По умолчанию выбран безопасный вариант "При отриманні" —
   // отдельного локатора для выбора не нужно.
@@ -71,9 +75,20 @@ export class CheckoutPage {
     this.deliveryCostInCheckout = page
       .locator('li.chPrice', { hasText: 'Доставка:' })
       .locator('.cost');
+    this.deliveryValidationHint = page.locator('.hintContent', {
+      hasText: 'заповніть усі дані щодо доставки',
+    });
     this.placeOrderButton = page.locator(
       'input[type="submit"][value="Оформити замовлення"]:visible',
     );
+  }
+
+  // Общий локатор инлайновых ошибок валидации полей — на разных полях это то
+  // <span>, то <p>, но у всех общий набор классов "iUnT cEr" (например,
+  // "Введіть прізвище кирилицею" под Прізвище или "Виберіть місто зі списку"
+  // под полем міста).
+  validationError(text: string): Locator {
+    return this.page.locator('.iUnT.cEr', { hasText: text });
   }
 
   async startCheckout() {
