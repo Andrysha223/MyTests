@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { ProductPage } from '../pages/ProductPage';
 import { WishlistPage } from '../pages/WishlistPage';
 import { loginAsTestUser } from '../helpers/auth';
+import { deleteAllListsViaDesktop } from '../helpers/wishlist-cleanup';
 
 const PRODUCT_NAME = 'Конструктор LEGO City Залізничні стрілки (60238)';
 const PRODUCT_URL =
@@ -28,9 +29,14 @@ test('Добавление и удаление товара из избранн�
 
   await test.step('Авторизоваться и очистить список бажань', async () => {
     await loginAsTestUser(page);
-    // Тестовый аккаунт общий — в списке бажань могут остаться товары
-    // с прошлых прогонов, из-за чего проверка счётчика/состава не совпадёт.
-    await wishlistPage.clearWishlist();
+    // Тест предполагает ровно один список бажань (иначе при добавлении
+    // товара сайт показывает попап "Виберіть список" вместо прямого
+    // добавления). Очистка идёт через отдельный desktop-контекст (см.
+    // deleteAllListsViaDesktop) — на мобильной верстке нет видимой кнопки
+    // удаления списка целиком, поэтому лишние списки с прошлых прогонов
+    // (например, из choose-wishlist-popup.spec.ts) нельзя было бы убрать
+    // напрямую в мобильном контексте текущего теста.
+    await deleteAllListsViaDesktop(page);
   });
 
   let goodId: string;

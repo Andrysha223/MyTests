@@ -101,10 +101,6 @@ export class WishlistPage {
     await this.listBlock(name).waitFor({ state: 'attached' });
   }
 
-  // Блок конкретного списка бажань (заголовок + его товары) — списки с
-  // одинаковым названием (например, задвоенные "Тестовий список" от
-  // предыдущих неудачных прогонов) неотличимы по названию, поэтому очистка
-  // списков всегда удаляет ВСЕ списки подряд, а не по имени.
   listBlock(listName: string): Locator {
     return this.page.locator('.WLwrapper', { hasText: listName });
   }

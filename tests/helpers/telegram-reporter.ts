@@ -1,3 +1,4 @@
+import path from 'path';
 import type {
   FullConfig,
   FullResult,
@@ -12,7 +13,7 @@ import type {
 // Токен и chat_id берутся из .env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID) —
 // если их нет, репортер просто ничего не делает (не ломает прогон).
 export default class TelegramReporter implements Reporter {
-  private failedTests: { title: string; error: string }[] = [];
+  private failedTests: { title: string; file: string; project: string; error: string }[] = [];
   private passed = 0;
   private failed = 0;
   private skipped = 0;
@@ -23,22 +24,24 @@ export default class TelegramReporter implements Reporter {
   }
 
   onTestEnd(test: TestCase, result: TestResult) {
-    const projectName = test.parent.project()?.name ?? '';
-    const title = `[${projectName}] ${test.titlePath().slice(2).join(' › ')}`;
-
     if (result.status === 'passed') {
       this.passed++;
     } else if (result.status === 'skipped') {
       this.skipped++;
     } else {
       this.failed++;
-      // Берём только первую строку сообщения об ошибке — стектрейс в
-      // Telegram-сообщение не поместится и не нужен, а первая строка обычно
-      // содержит суть ("Timeout ... exceeded", кастомное сообщение expect и т.п.).
+      // Название теста и так полностью описывает сценарий по-русски — не
+      // засоряем его технической частью (путь к файлу, describe-цепочка).
+      // Файл и проект (viewport) выносим отдельной строкой для навигации.
       const rawError = result.error?.message ?? 'Неизвестная ошибка';
       const firstLine = rawError.split('\n')[0].trim();
       const errorText = firstLine.length > 200 ? `${firstLine.slice(0, 200)}…` : firstLine;
-      this.failedTests.push({ title, error: errorText });
+      this.failedTests.push({
+        title: test.title,
+        file: path.basename(test.location.file),
+        project: test.parent.project()?.name ?? '',
+        error: errorText,
+      });
     }
   }
 
@@ -60,7 +63,7 @@ export default class TelegramReporter implements Reporter {
     if (this.failedTests.length > 0) {
       const list = this.failedTests
         .slice(0, 10)
-        .map((t) => `• ${t.title}\n  ↳ ${t.error}`)
+        .map((t) => `• ${t.title}\n  📄 ${t.file} [${t.project}]\n  ↳ ${t.error}`)
         .join('\n');
       text += `\n\nУпавшие тесты:\n${list}`;
       if (this.failedTests.length > 10) {
