@@ -72,18 +72,22 @@ export class ThankYouPage {
   }
 
   // Извлекает число из строки "Вартість доставки: 30 грн." (валюта здесь —
-  // слово "грн.", а не символ "₴", как в сайдбаре чекаута).
+  // слово "грн.", а не символ "₴", как в сайдбаре чекаута). Суммы от 1000
+  // форматируются с пробелом-разделителем тысяч (см. getProductsTotalFromPage).
   async getDeliveryCostFromPage(): Promise<number> {
     const text = await this.orderDeliveryCostRow.textContent();
-    const match = (text ?? '').match(/(\d+)\s*грн/);
-    return match ? Number(match[1]) : NaN;
+    const match = (text ?? '').match(/([\d\s ]+)грн/);
+    return match ? Number(match[1].replace(/[\s ]/g, '')) : NaN;
   }
 
-  // Извлекает число из строки "Товарів на суму: 483 ₴" (валюта здесь —
+  // Извлекает число из строки "Товарів на суму: 1 902 ₴" (валюта здесь —
   // символ "₴", как в сайдбаре чекаута, в отличие от "Вартість доставки").
+  // Суммы от 1000 форматируются с пробелом-разделителем тысяч (обычным или
+  // неразрывным  ) — поэтому захватываем все цифры и пробелы подряд,
+  // а не один блок \d+, и убираем пробелы перед Number(...).
   async getProductsTotalFromPage(): Promise<number> {
     const text = await this.orderProductsTotalRow.textContent();
-    const match = (text ?? '').match(/(\d+)\s*₴/);
-    return match ? Number(match[1]) : NaN;
+    const match = (text ?? '').match(/([\d\s ]+)₴/);
+    return match ? Number(match[1].replace(/[\s ]/g, '')) : NaN;
   }
 }

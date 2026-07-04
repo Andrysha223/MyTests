@@ -1,17 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { LegoBrandPage } from '../pages/LegoBrandPage';
-import { LoginPage } from '../pages/LoginPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 import { ThankYouPage } from '../pages/ThankYouPage';
 import { CartPage } from '../pages/CartPage';
 import { getProductFromBasketResponse, expectOrderProductDetails } from '../helpers/basket';
+import { TEST_USER, isTestUserConfigured, loginAsTestUser } from '../helpers/auth';
 
-const EMAIL = process.env['LOGIN_EMAIL'];
-const PASSWORD = process.env['LOGIN_PASSWORD'];
-const LAST_NAME = process.env['LOGIN_LAST_NAME'];
-const FIRST_NAME = process.env['LOGIN_FIRST_NAME'];
-const PATRONYMIC = process.env['LOGIN_PATRONYMIC'];
-const PHONE = process.env['LOGIN_PHONE'];
 const PRODUCT_NAME = 'Конструктор LEGO Speed champions Автомобіль McLaren Senna (75892)';
 const PRODUCT_ARTICLE = '75892';
 const CITY = 'Київ';
@@ -29,23 +23,18 @@ test.use({ ignoreHTTPSErrors: true });
 // в place-order-nova-poshta) -> оплата при отриманні -> подтверждение заказа.
 test('Оформление заказа с доставкою у відділення Укрпошти (web1-bi.ua)', async ({ page }) => {
   test.skip(
-    !EMAIL || !PASSWORD || !LAST_NAME || !FIRST_NAME || !PATRONYMIC || !PHONE,
+    !isTestUserConfigured,
     'LOGIN_EMAIL / LOGIN_PASSWORD / LOGIN_LAST_NAME / LOGIN_FIRST_NAME / LOGIN_PATRONYMIC / LOGIN_PHONE не заданы в .env',
   );
   test.setTimeout(90000);
 
   const brandPage = new LegoBrandPage(page);
-  const loginPage = new LoginPage(page);
   const checkoutPage = new CheckoutPage(page);
   const thankYouPage = new ThankYouPage(page);
   const cartPage = new CartPage(page);
 
   await test.step('Авторизоваться', async () => {
-    await brandPage.goto();
-    await brandPage.header.openLogin();
-    await page.waitForURL('**/login/**');
-    await loginPage.login(EMAIL!, PASSWORD!);
-    await page.waitForURL('**/lk/**');
+    await loginAsTestUser(page);
   });
 
   await test.step('Очистить корзину', async () => {
@@ -85,23 +74,23 @@ test('Оформление заказа с доставкою у відділе�
     await expect(
       checkoutPage.lastNameInput,
       'Поле «Прізвище» должно быть предзаполнено фамилией из аккаунта',
-    ).toHaveValue(LAST_NAME!);
+    ).toHaveValue(TEST_USER.lastName!);
     await expect(
       checkoutPage.firstNameInput,
       "Поле «Ім'я» должно быть предзаполнено именем из аккаунта",
-    ).toHaveValue(FIRST_NAME!);
+    ).toHaveValue(TEST_USER.firstName!);
     await expect(
       checkoutPage.patronymicInput,
       'Поле «По-батькові» должно быть предзаполнено отчеством из аккаунта',
-    ).toHaveValue(PATRONYMIC!);
+    ).toHaveValue(TEST_USER.patronymic!);
     await expect(
       checkoutPage.phoneInput,
       'Поле «Номер телефону» должно быть предзаполнено телефоном из аккаунта',
-    ).toHaveValue(PHONE!);
+    ).toHaveValue(TEST_USER.phone!);
     await expect(
       checkoutPage.emailInput,
       'Поле «Email» должно быть предзаполнено почтой из аккаунта',
-    ).toHaveValue(EMAIL!);
+    ).toHaveValue(TEST_USER.email!);
   });
 
   await test.step('Подтвердить предзаполненные контактные данные', async () => {

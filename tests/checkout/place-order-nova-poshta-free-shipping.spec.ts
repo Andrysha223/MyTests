@@ -1,32 +1,43 @@
 import { test, expect } from '@playwright/test';
-import { LegoBrandPage } from '../pages/LegoBrandPage';
+import { ProductPage } from '../pages/ProductPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 import { ThankYouPage } from '../pages/ThankYouPage';
 import { CartPage } from '../pages/CartPage';
 import { getProductFromBasketResponse, expectOrderProductDetails } from '../helpers/basket';
 import { TEST_USER, isTestUserConfigured, loginAsTestUser } from '../helpers/auth';
 
-const PRODUCT_NAME = 'Конструктор LEGO Speed champions Автомобіль McLaren Senna (75892)';
-const PRODUCT_ARTICLE = '75892';
+// Цена товара (1 902 ₴) сама по себе выше порога бесплатной доставки Нової
+// Пошти (freeShippingMinPrice: 1700 ₴ в ответе API) — поэтому одной штуки
+// достаточно, докупать количество не нужно.
+const PRODUCT_NAME = 'Конструктор LEGO Marvel super heroes Шолом Залізної Людини (76165)';
+const PRODUCT_ARTICLE = '76165';
+const PRODUCT_URL =
+  'https://web1-bi.ua/ukr/product/konstruktor-lego-marvel-super-heroes-shlem-zheleznogo-cheloveka-76165.html';
 const CITY = 'Київ';
 
 // У web1-bi.ua сертифікат виданий на bi.ua (*.bi.ua), тому без цієї опції
 // Playwright відмовиться відкривати сторінку через ERR_CERT_COMMON_NAME_INVALID.
 test.use({ ignoreHTTPSErrors: true });
 
-// Проверяет оформление заказа с доставкой у відділення «Нова Пошта» (в отличие
-// от других чекаут-тестов, где проверяется самовивіз): логин -> очистка
-// корзины -> добавление LEGO Speed Champions McLaren Senna (75892) -> контактні
-// дані уже предзаполнены аккаунтом -> вибір способу доставки "Нова Пошта",
-// первое доступное відділення -> оплата при отриманні -> подтверждение заказа.
-test('Оформление заказа с доставкою у відділення Нової Пошти (web1-bi.ua)', async ({ page }) => {
+// Проверяет бесплатную доставку у відділення «Нова Пошта» при сумме
+// замовлення від 1700 ₴ (freeShippingMinPrice у відповіді
+// GET /api/v1/basket/delivery): логин -> очистка корзины -> добавление
+// дорогого товара (LEGO Marvel Шолом Залізної Людини, 1902 ₴, вище порогу) ->
+// контактні дані предзаповнені аккаунтом -> вибір способу доставки "Нова
+// Пошта", перше доступне відділення -> перевірка, що і в сайдбарі чекауту, і
+// на сторінці підтвердження доставка показана як "Безкоштовно" (а не
+// "0 ₴"/"0 грн." — сайт саме так відображає безкоштовну доставку) ->
+// оплата при отриманні -> підтвердження замовлення.
+test('Оформление заказа с безкоштовною доставкою Нової Пошти при сумі від 1700 ₴ (web1-bi.ua)', async ({
+  page,
+}) => {
   test.skip(
     !isTestUserConfigured,
     'LOGIN_EMAIL / LOGIN_PASSWORD / LOGIN_LAST_NAME / LOGIN_FIRST_NAME / LOGIN_PATRONYMIC / LOGIN_PHONE не заданы в .env',
   );
   test.setTimeout(90000);
 
-  const brandPage = new LegoBrandPage(page);
+  const productPage = new ProductPage(page, PRODUCT_URL);
   const checkoutPage = new CheckoutPage(page);
   const thankYouPage = new ThankYouPage(page);
   const cartPage = new CartPage(page);
@@ -36,19 +47,22 @@ test('Оформление заказа с доставкою у відділе�
   });
 
   await test.step('Очистить корзину', async () => {
+    // Тестовый аккаунт общий — в корзине могут остаться посторонние товары
+    // с прошлых прогонов/промо сайта, из-за чего чекаут стартует не с шага 1
+    // и сумма заказа не совпадёт с ожидаемой.
     await cartPage.clearCart();
   });
 
   let productCodeFromApi: number;
   let productPriceFromApi: number;
 
-  await test.step('Добавить товар в корзину', async () => {
+  await test.step('Добавить дорогой товар в корзину', async () => {
     const addToCartApiResponse = page.waitForResponse(
       (r) => r.url().includes('/api/v1/basket/good') && r.request().method() === 'POST',
     );
 
-    await brandPage.goto();
-    await brandPage.addToCart(PRODUCT_NAME);
+    await productPage.goto();
+    await productPage.clickBuy();
 
     const product = getProductFromBasketResponse(
       await (await addToCartApiResponse).json(),
@@ -65,8 +79,6 @@ test('Оформление заказа с доставкою у відділе�
   });
 
   await test.step('Проверить предзаполненные контактные данные', async () => {
-    // Проверяем, что чекаут реально подтягивает данные из авторизованного
-    // аккаунта, а не оставляет поля пустыми/дефолтными.
     await expect(
       checkoutPage.lastNameInput,
       'Поле «Прізвище» должно быть предзаполнено фамилией из аккаунта',
@@ -100,13 +112,20 @@ test('Оформление заказа с доставкою у відділе�
     deliveryPriceFromApi = delivery.deliveryPrice;
   });
 
-  await test.step('Проверить стоимость доставки в чекауте', async () => {
-    // Сверяем, что цена, которую вернул GET /api/v1/basket/delivery,
-    // реально отображается в сайдбаре "Ваше замовлення" на шаге оплаты.
+  await test.step('Проверить, что API вернул бесплатную доставку (сума ≥ 1700 ₴)', async () => {
+    expect(
+      deliveryPriceFromApi,
+      `Стоимость доставки из ответа API должна быть 0 ₴, т.к. сумма заказа (${productPriceFromApi} ₴) превышает порог бесплатной доставки (1700 ₴)`,
+    ).toBe(0);
+  });
+
+  await test.step('Проверить, что доставка бесплатная в чекауте', async () => {
+    // При бесплатной доставке сайт показывает в сайдбаре именно текст
+    // "Безкоштовно", а не "0 ₴" — поэтому сверяем со строкой, а не с ценой.
     await expect(
       checkoutPage.deliveryCostInCheckout,
-      `В сайдбаре чекаута должна отображаться стоимость доставки "${deliveryPriceFromApi} ₴" из ответа API`,
-    ).toHaveText(`${deliveryPriceFromApi} ₴`);
+      'В сайдбаре чекаута доставка Новой Почты должна отображаться как "Безкоштовно", т.к. сумма заказа превышает 1700 ₴',
+    ).toHaveText('Безкоштовно');
   });
 
   let orderIdFromApi: number;
@@ -126,16 +145,12 @@ test('Оформление заказа с доставкою у відділе�
       'На странице подтверждения должен быть виден номер заказа (№...)',
     ).toBeVisible();
 
-    // Номер заказа на странице должен совпадать с orderId из ответа API,
-    // а не просто быть "каким-то числом".
     const orderNumberOnPage = await thankYouPage.getOrderNumberFromPage();
     expect(
       orderNumberOnPage,
       `Номер заказа на странице ("${orderNumberOnPage}") должен совпадать с orderId из ответа API ("${orderIdFromApi}")`,
     ).toBe(String(orderIdFromApi));
 
-    // Способ доставки в подтверждении должен быть именно "Нова Пошта",
-    // а не самовивіз/дефолт — проверяем, что выбор реально сохранился.
     await expect(
       thankYouPage.orderDeliveryMethodNovaPoshta,
       'В подтверждении заказа должен быть указан способ доставки «У відділення «Нова Пошта»',
@@ -154,19 +169,17 @@ test('Оформление заказа с доставкою у відділе�
       quantity: 1,
     });
 
-    // Стоимость доставки на странице подтверждения должна совпадать с той,
-    // что вернул API (см. шаг "Проверить стоимость доставки в чекауте"),
-    // а не быть, например, нулевой/дефолтной.
-    const deliveryCostOnThankYouPage = await thankYouPage.getDeliveryCostFromPage();
-    expect(
-      deliveryCostOnThankYouPage,
-      `Стоимость доставки на странице подтверждения ("${deliveryCostOnThankYouPage} грн.") должна совпадать со стоимостью из API ("${deliveryPriceFromApi} ₴")`,
-    ).toBe(deliveryPriceFromApi);
+    // На странице подтверждения доставка тоже должна быть подписана как
+    // "Безкоштовно" (а не "0 грн."), как и в сайдбаре чекаута.
+    await expect(
+      thankYouPage.orderDeliveryCostRow,
+      'На странице подтверждения доставка Новой Почты должна отображаться как "Безкоштовно", т.к. сумма заказа превышает 1700 ₴',
+    ).toContainText('Безкоштовно');
   });
 
   await test.step('Проверить, что корзина пуста после заказа', async () => {
     await expect(
-      brandPage.header.cartCounter,
+      productPage.header.cartCounter,
       'После успешного оформления заказа корзина должна опустеть (счётчик в хедере = 0)',
     ).toHaveText('0');
   });

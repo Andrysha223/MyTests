@@ -337,6 +337,7 @@ export class CheckoutPage {
   // нативно: клик по <label> или программный .check() на скрытом input не
   // переключает состояние вообще. Кликать нужно именно по видимому
   // div.check внутри label — только так стейт реально меняется.
+  
   async placeOrder(): Promise<{ orderId: number }> {
     await this.placeOrderButton.waitFor({ state: 'visible' });
 
