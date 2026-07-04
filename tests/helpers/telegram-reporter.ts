@@ -12,7 +12,7 @@ import type {
 // Токен и chat_id берутся из .env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID) —
 // если их нет, репортер просто ничего не делает (не ломает прогон).
 export default class TelegramReporter implements Reporter {
-  private failedTests: string[] = [];
+  private failedTests: { title: string; error: string }[] = [];
   private passed = 0;
   private failed = 0;
   private skipped = 0;
@@ -32,7 +32,13 @@ export default class TelegramReporter implements Reporter {
       this.skipped++;
     } else {
       this.failed++;
-      this.failedTests.push(title);
+      // Берём только первую строку сообщения об ошибке — стектрейс в
+      // Telegram-сообщение не поместится и не нужен, а первая строка обычно
+      // содержит суть ("Timeout ... exceeded", кастомное сообщение expect и т.п.).
+      const rawError = result.error?.message ?? 'Неизвестная ошибка';
+      const firstLine = rawError.split('\n')[0].trim();
+      const errorText = firstLine.length > 200 ? `${firstLine.slice(0, 200)}…` : firstLine;
+      this.failedTests.push({ title, error: errorText });
     }
   }
 
@@ -53,12 +59,12 @@ export default class TelegramReporter implements Reporter {
 
     if (this.failedTests.length > 0) {
       const list = this.failedTests
-        .slice(0, 15)
-        .map((t) => `• ${t}`)
+        .slice(0, 10)
+        .map((t) => `• ${t.title}\n  ↳ ${t.error}`)
         .join('\n');
       text += `\n\nУпавшие тесты:\n${list}`;
-      if (this.failedTests.length > 15) {
-        text += `\n… и ещё ${this.failedTests.length - 15}`;
+      if (this.failedTests.length > 10) {
+        text += `\n… и ещё ${this.failedTests.length - 10}`;
       }
     }
 

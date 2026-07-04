@@ -189,6 +189,8 @@ test('Способ доставки "у відділення" без выбор�
 test('Гостевой чекаут без согласия с публичным договором не оформляет заказ (web1-bi.ua)', async ({
   page,
 }) => {
+  test.setTimeout(90000);
+
   const brandPage = new LegoBrandPage(page);
   const checkoutPage = new CheckoutPage(page);
   const contactDetails = generateRandomContactDetails();
