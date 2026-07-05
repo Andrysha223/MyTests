@@ -72,6 +72,13 @@ export class LegoBrandPage {
   // отсюда и стабильно "не получилось" при быстрых ретраях подряд.
   async addToFavoritesAndVerify(productName: string) {
     const wishButton = this.wishButton(productName);
+    // Релогин делаем максимум 1 раз за тест — если он не помог с первого
+    // раза, повторять его ещё раз в рамках той же попытки только тратит
+    // время (до test.setTimeout) без реальных шансов на другой результат;
+    // дальше пусть сработает внешний retry Playwright'а (полностью свежий
+    // браузерный контекст + логин, что эквивалентно, но не грозит вылезти
+    // за таймаут ЭТОГО теста).
+    let alreadyRelogged = false;
     for (let attempt = 1; attempt <= 3; attempt++) {
       const alreadyActive = (await wishButton.getAttribute('class'))?.includes('ac');
       if (alreadyActive) return;
@@ -105,7 +112,8 @@ export class LegoBrandPage {
         return;
       } catch (error) {
         if (attempt === 3) throw error;
-        if (sessionDesynced) {
+        if (sessionDesynced && !alreadyRelogged) {
+          alreadyRelogged = true;
           await loginAsTestUser(this.page);
           await this.goto();
         } else {
