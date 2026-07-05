@@ -12,6 +12,9 @@ export class ThankYouPage {
   readonly orderDeliveryMethodNovaPoshta: Locator;
   readonly orderDeliveryMethodUkrPoshta: Locator;
   readonly orderDeliveryMethodCourier: Locator;
+  // "На ел. пошту" — способ доставки цифрового товару (наприклад,
+  // електронного подарункового сертифіката), без фізичної доставки.
+  readonly orderDeliveryMethodEmail: Locator;
   readonly orderPaymentMethod: Locator;
   // Способ оплаты картой на сайте (LiqPay) — вместо "При отриманні" у заказов
   // с доставкой у поштомат «Нова Пошта» (там нет варианта оплаты при получении).
@@ -28,6 +31,11 @@ export class ThankYouPage {
   // Строка "Товарів на суму: 483 ₴" в блоке "Ваші товари:" — суммарная
   // стоимость товаров без учёта доставки.
   readonly orderProductsTotalRow: Locator;
+  // Для електронного подарункового сертифіката з неоплаченим замовленням
+  // (наприклад, оплата скасована на LiqPay) сайт показує ЗОВСІМ ІНШИЙ текст
+  // замість звичайного successMessage — товар цифровий і без оплати не може
+  // бути виданий, тому замість "Вітаємо..." сайт просить повторити оплату.
+  readonly certificatePaymentNotCompletedMessage: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -37,12 +45,14 @@ export class ThankYouPage {
     this.orderDeliveryMethodNovaPoshta = page.getByText('У відділення «Нова Пошта»');
     this.orderDeliveryMethodUkrPoshta = page.getByText('У відділення Укрпошта');
     this.orderDeliveryMethodCourier = page.getByText("Кур'єром «Нова Пошта»");
+    this.orderDeliveryMethodEmail = page.getByText('На ел. пошту');
     this.orderPaymentMethod = page.getByText('При отриманні (готівкою/карткою)');
     this.orderPaymentMethodCard = page.getByText('Карткою на сайті');
     this.orderDeliveryCostRow = page.locator('tr', { has: page.locator('text=Вартість доставки') });
     this.orderDeliveryAddressRow = page.locator('tr', { has: page.locator('text=Адреса доставки') });
     this.orderPaymentStatusPending = page.getByText('Очікування платежу');
     this.orderProductsTotalRow = page.locator('li.fJbAc', { hasText: 'Товарів на суму' });
+    this.certificatePaymentNotCompletedMessage = page.getByText('оплата не пройшла успішно');
   }
 
   // Адрес магазина зависит от того, что выбрали на шаге 2 (параметризовано в тесте).

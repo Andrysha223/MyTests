@@ -450,6 +450,16 @@ export class CheckoutPage {
   async placeOrderAndDeclineCardPayment(): Promise<{ orderId: number }> {
     await this.placeOrderButton.waitFor({ state: 'visible' });
 
+    // Гостевой чекаут с оплатою тільки карткою (наприклад, поштомат або
+    // електронний подарунковий сертифікат) — тут теж є чекбокс згоди з
+    // "Публічним договором купівлі-продажу", як і в звичайному placeOrder().
+    const consentLabel = this.page.locator('li', {
+      has: this.page.locator('text=Публічним договором'),
+    });
+    if (await consentLabel.isVisible().catch(() => false)) {
+      await consentLabel.locator('div.check').click();
+    }
+
     const waitForOrderResponse = () =>
       this.page.waitForResponse(
         (r) => r.url().includes('/api/v1/orders/order') && r.request().method() === 'POST',
