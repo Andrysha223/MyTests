@@ -1,6 +1,5 @@
 import { Page, Locator, expect } from '@playwright/test';
 import { HeaderComponent } from './HeaderComponent';
-import { loginAsTestUser } from '../helpers/auth';
 
 export class LegoBrandPage {
   readonly page: Page;
@@ -72,36 +71,11 @@ export class LegoBrandPage {
   // отсюда и стабильно "не получилось" при быстрых ретраях подряд.
   async addToFavoritesAndVerify(productName: string) {
     const wishButton = this.wishButton(productName);
-    // Релогин делаем максимум 1 раз за тест — если он не помог с первого
-    // раза, повторять его ещё раз в рамках той же попытки только тратит
-    // время (до test.setTimeout) без реальных шансов на другой результат;
-    // дальше пусть сработает внешний retry Playwright'а (полностью свежий
-    // браузерный контекст + логин, что эквивалентно, но не грозит вылезти
-    // за таймаут ЭТОГО теста).
-    let alreadyRelogged = false;
     for (let attempt = 1; attempt <= 3; attempt++) {
       const alreadyActive = (await wishButton.getAttribute('class'))?.includes('ac');
       if (alreadyActive) return;
 
-      // Подслушиваем реальный ответ API добавления — если сервер отвечает
-      // 400 "Список не знайдено", проблема не в клике (запрос долетает
-      // каждый раз), а в рассинхроне сессии с текущим списком бажань (см.
-      // wishlist-cleanup.ts). Обычная перезагрузка страницы это не чинит —
-      // подтверждено трейсом, где 3 попытки подряд слали ОДИН И ТОТ ЖЕ
-      // невалидный wishlist-id. Полный повторный логин пересобирает сессию
-      // с нуля и снимает застрявший на сервере указатель "текущий список".
-      const addResponsePromise = this.page
-        .waitForResponse((r) => r.url().includes('/api/v1/wish-lists/good'), { timeout: 5000 })
-        .catch(() => null);
-
       await this.addToFavorites(productName);
-      const addResponse = await addResponsePromise;
-      let sessionDesynced = false;
-      if (addResponse && addResponse.status() === 400) {
-        const body = await addResponse.text().catch(() => '');
-        sessionDesynced = body.includes('не знайдено');
-      }
-
       await this.page.waitForTimeout(2000);
 
       try {
@@ -112,17 +86,14 @@ export class LegoBrandPage {
         return;
       } catch (error) {
         if (attempt === 3) throw error;
-        if (sessionDesynced && !alreadyRelogged) {
-          alreadyRelogged = true;
-          await loginAsTestUser(this.page);
-          await this.goto();
-        } else {
-          // Полная перезагрузка каталога (а не просто пауза) перед следующей
-          // попыткой — клик по уже "подвисшей" отрисовке кнопки стабильно не
-          // помогал, а свежий рендер страницы иногда подтягивает корректное
-          // состояние с сервера.
-          await this.goto();
-        }
+        // Полная перезагрузка каталога (а не просто пауза) перед следующей
+        // попыткой — клик по уже "подвисшей" отрисовке кнопки стабильно не
+        // помогал, а свежий рендер страницы иногда подтягивает корректное
+        // состояние с сервера. Если причина — рассинхрон сессии с текущим
+        // списком бажань (см. BUGS.md), reload внутри теста его не чинит —
+        // это лечится только полным перезапуском с нуля, за который отвечает
+        // retries на уровне Playwright (playwright.config.ts).
+        await this.goto();
       }
     }
   }

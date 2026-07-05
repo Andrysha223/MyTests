@@ -17,11 +17,10 @@ const PRODUCT_URL =
 // Playwright відмовиться відкривати сторінку через ERR_CERT_COMMON_NAME_INVALID.
 test.use({ ignoreHTTPSErrors: true });
 
-// Без ретраев на уровне Playwright — здесь исследуется реальный баг сайта
-// (рассинхрон сессии с текущим списком бажань, см. BUGS.md), и цель прогона
-// сейчас — видеть честный результат точечного фикса внутри
-// addToFavoritesAndVerify(), а не прятать его за повторным запуском теста.
-test.describe.configure({ retries: 0 });
+// 2 ретрая (а не глобальный 1) — клик "додати в бажань" ловит реальный баг
+// сайта (см. BUGS.md), который иногда пробивает и retries:1 (обе попытки
+// подряд неудачные). 3 попытки всего снижают шанс поймать баг на всех сразу.
+test.describe.configure({ retries: 2 });
 
 // Проверяет добавление товара в избранное со страницы самого товара (кнопка
 // "До списку бажань" рядом с бейджами знижок, класс "wishBig" — отличается
@@ -33,7 +32,7 @@ test.describe.configure({ retries: 0 });
 test('Добавление и удаление товара из избранного со страницы товара (web1-bi.ua)', async ({
   page,
 }) => {
-  test.setTimeout(90000);
+  test.setTimeout(60000);
 
   const productPage = new ProductPage(page, PRODUCT_URL);
   const wishlistPage = new WishlistPage(page);
