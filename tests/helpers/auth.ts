@@ -2,8 +2,8 @@ import { Page } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import { HeaderComponent } from '../pages/HeaderComponent';
 
-// Единственное место, где учётные данные общего тестового аккаунта читаются
-// из .env — раньше process.env['LOGIN_...'] дублировался в каждом чекаут-тесте.
+// Єдине місце, де облікові дані спільного тестового акаунта читаються
+// з .env — раніше process.env['LOGIN_...'] дублювався в кожному чекаут-тесті.
 export const TEST_USER = {
   email: process.env['LOGIN_EMAIL'],
   password: process.env['LOGIN_PASSWORD'],
@@ -13,9 +13,9 @@ export const TEST_USER = {
   phone: process.env['LOGIN_PHONE'],
 };
 
-// Если хоть одна из переменных не задана в .env, авторизованные чекаут-тесты
-// не могут пройти дальше логина — их нужно скипать, а не роняти с непонятной
-// ошибкой на пустом поле. Использовать в test.skip(!isTestUserConfigured, ...).
+// Якщо хоч одна зі змінних не задана в .env, авторизовані чекаут-тести
+// не можуть пройти далі логіну — їх потрібно скіпати, а не валити з незрозумілою
+// помилкою на порожньому полі. Використовувати в test.skip(!isTestUserConfigured, ...).
 export const isTestUserConfigured = Boolean(
   TEST_USER.email &&
     TEST_USER.password &&
@@ -25,9 +25,9 @@ export const isTestUserConfigured = Boolean(
     TEST_USER.phone,
 );
 
-// Общий флоу логина тестовым аккаунтом, одинаковый во всех авторизованных
-// чекаут-тестах: сразу переходим на страницу логина по прямой ссылке,
-// авторизуемся и дожидаемся редиректа в личный кабинет.
+// Спільний флоу логіну тестовим акаунтом, однаковий у всіх авторизованих
+// чекаут-тестах: одразу переходимо на сторінку логіну за прямим посиланням,
+// авторизуємось і чекаємо редиректу в особистий кабінет.
 export async function loginAsTestUser(page: Page) {
   const header = new HeaderComponent(page);
   const loginPage = new LoginPage(page);

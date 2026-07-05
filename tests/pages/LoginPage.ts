@@ -1,7 +1,7 @@
 import { Page, Locator } from '@playwright/test';
 
-// Отвечает только за саму форму логина на /ukr/login/.
-// Переход в хедер ("Вхід"/"Вийти"/имя аккаунта) — в HeaderComponent.
+// Відповідає лише за саму форму логіну на /ukr/login/.
+// Перехід у хедер ("Вхід"/"Вийти"/ім'я акаунта) — в HeaderComponent.
 export class LoginPage {
   readonly page: Page;
   readonly emailPhoneInput: Locator;
@@ -11,18 +11,18 @@ export class LoginPage {
 
   constructor(page: Page) {
     this.page = page;
-    // На мобильной верстке на странице одновременно рендерятся формы логина
-    // и регистрации с одинаковым id="emailPhone" — фильтруем через :visible,
-    // как и большинство "дублирующихся" элементов на этом сайте.
+    // На мобільній верстці на сторінці одночасно рендеряться форми логіну
+    // і реєстрації з однаковим id="emailPhone" — фільтруємо через :visible,
+    // як і більшість "дублікованих" елементів на цьому сайті.
     this.emailPhoneInput = page.locator('#emailPhone:visible');
     this.nextButton = page.locator('input[value="Далі"]:visible');
     this.passwordInput = page.locator('input[type="password"]:visible');
     this.submitButton = page.locator('input[value="Увійти"]:visible');
   }
 
-  // Форма двухшаговая: сначала email/телефон + "Далі", затем появляется
-  // поле пароля + "Увійти". Кнопки задизейблены, пока поле пустое,
-  // поэтому используем pressSequentially, а не fill().
+  // Форма двокрокова: спочатку email/телефон + "Далі", потім з'являється
+  // поле пароля + "Увійти". Кнопки задизейблені, поки поле порожнє,
+  // тому використовуємо pressSequentially, а не fill().
   async login(emailOrPhone: string, password: string) {
     await this.emailPhoneInput.pressSequentially(emailOrPhone);
     await this.nextButton.click();

@@ -25,25 +25,25 @@ interface TestInfo {
   error?: string;
   steps: StepInfo[];
   screenshotPath?: string;
-  // Номер финальной попытки (0 — прошла с первого раза, 1+ — понадобился
-  // ретрай). Используется в PDF, чтобы пометить "прошёл, но не сразу"
-  // отдельно от чистого PASSED — статус теста (status) при этом остаётся
-  // 'passed', чтобы не ломать подсчёт passed/failed в onEnd.
+  // Номер фінальної спроби (0 — пройшла з першого разу, 1+ — знадобився
+  // retry). Використовується в PDF, щоб позначити "пройшов, але не одразу"
+  // окремо від чистого PASSED — статус тесту (status) при цьому лишається
+  // 'passed', щоб не ламати підрахунок passed/failed в onEnd.
   retryCount: number;
 }
 
-// Отправляет краткую сводку прогона (passed/failed/skipped + список упавших
-// тестов) текстом в Telegram-чат, плюс полный PDF-отчёт со всеми тестами и их
-// шагами — через Bot API. Токен и chat_id берутся из .env
-// (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID) — если их нет, репортер ничего не
-// делает (не ломает прогон).
+// Надсилає коротку зведену інформацію про прогін (passed/failed/skipped +
+// список впалих тестів) текстом у Telegram-чат, плюс повний PDF-звіт з усіма
+// тестами та їх кроками — через Bot API. Токен і chat_id беруться з .env
+// (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID) — якщо їх немає, репортер нічого не
+// робить (не ламає прогін).
 export default class TelegramReporter implements Reporter {
-  // onTestEnd вызывается ОТДЕЛЬНО на каждую попытку (изначальный запуск +
-  // каждый retry) — при retries > 0 (см. playwright.config.ts) один и тот же
-  // тест может упасть на попытке №1 и пройти на retry. Ключ — test.id,
-  // значение каждый раз ПЕРЕЗАПИСЫВАЕТСЯ, поэтому в итоге остаётся только
-  // ПОСЛЕДНЯЯ (финальная) попытка — без этого репортер считал упавшей и
-  // показывал в отчёте попытку, которая в итоге была успешно перепройдена.
+  // onTestEnd викликається ОКРЕМО на кожну спробу (початковий запуск +
+  // кожен retry) — при retries > 0 (див. playwright.config.ts) один і той
+  // самий тест може впасти на спробі №1 і пройти на retry. Ключ — test.id,
+  // значення щоразу ПЕРЕЗАПИСУЄТЬСЯ, тому в підсумку залишається лише
+  // ОСТАННЯ (фінальна) спроба — без цього репортер вважав впалою і
+  // показував у звіті спробу, яка в підсумку була успішно перепройдена.
   private testsById = new Map<string, TestInfo>();
   private flakyCount = 0;
   private startTime = 0;
@@ -56,9 +56,9 @@ export default class TelegramReporter implements Reporter {
     const rawError = result.error?.message;
     const errorFirstLine = rawError?.split('\n')[0].trim();
 
-    // Скриншот при падении (см. screenshot: 'only-on-failure' в
-    // playwright.config.ts) — сохранён на диске, передаём в дочерний процесс
-    // просто путь к файлу (сам PDF-процесс прочитает и закодирует его).
+    // Скриншот при падінні (див. screenshot: 'only-on-failure' в
+    // playwright.config.ts) — збережений на диску, передаємо в дочірній процес
+    // просто шлях до файлу (сам PDF-процес прочитає і закодує його).
     const screenshotAttachment = result.attachments.find(
       (a) => a.name === 'screenshot' && a.path,
     );
@@ -73,9 +73,9 @@ export default class TelegramReporter implements Reporter {
       screenshotPath: screenshotAttachment?.path,
       retryCount: result.retry,
       steps: result.steps
-        // Оставляем только шаги верхнего уровня, объявленные явно через
-        // test.step() — внутренние шаги Playwright (expect, page.click и
-        // т.п.) не несут смысловой нагрузки в отчёте и раздули бы PDF.
+        // Залишаємо лише кроки верхнього рівня, оголошені явно через
+        // test.step() — внутрішні кроки Playwright (expect, page.click і
+        // т.п.) не несуть смислового навантаження у звіті й роздули б PDF.
         .filter((s) => s.category === 'test.step')
         .map((s) => ({
           title: s.title,
@@ -84,10 +84,10 @@ export default class TelegramReporter implements Reporter {
         })),
     });
 
-    // outcome() учитывает ВСЕ попытки теста на данный момент — 'flaky'
-    // означает, что финальная попытка прошла, но не с первого раза.
-    // Считаем только на последней попытке (иначе одно и то же "flaky"
-    // засчиталось бы несколько раз — по разу на каждую промежуточную попытку).
+    // outcome() враховує ВСІ спроби тесту на даний момент — 'flaky'
+    // означає, що фінальна спроба пройшла, але не з першого разу.
+    // Рахуємо лише на останній спробі (інакше один і той самий "flaky"
+    // зарахувався б кілька разів — по разу на кожну проміжну спробу).
     if (result.retry === test.retries && test.outcome() === 'flaky') {
       this.flakyCount++;
     }
@@ -125,14 +125,14 @@ export default class TelegramReporter implements Reporter {
       }
     }
 
-    // Текст и PDF отправляются ОДНИМ сообщением — caption у sendDocument, а не
-    // отдельный sendMessage + sendDocument. PDF со всеми тестами и шагами
-    // генерируется в ОТДЕЛЬНОМ процессе (см. send-report-pdf.js): запуск
-    // Chromium прямо в процессе Playwright-раннера параллельно с его
-    // собственным завершением стабильно ронял Node нативным ассертом libuv на
-    // Windows. Если генерация PDF почему-то не удастся, send-report-pdf.js
-    // сам отправит текст обычным sendMessage — это единственный fallback,
-    // дублирования сообщений тут нет.
+    // Текст і PDF надсилаються ОДНИМ повідомленням — caption у sendDocument, а не
+    // окремий sendMessage + sendDocument. PDF з усіма тестами й кроками
+    // генерується в ОКРЕМОМУ процесі (див. send-report-pdf.js): запуск
+    // Chromium прямо в процесі Playwright-раннера паралельно з його
+    // власним завершенням стабільно валив Node нативним ассертом libuv на
+    // Windows. Якщо генерація PDF чомусь не вдасться, send-report-pdf.js
+    // сам надішле текст звичайним sendMessage — це єдиний fallback,
+    // дублювання повідомлень тут немає.
     const dataPath = path.resolve('playwright-report/telegram-report-data.json');
     try {
       fs.mkdirSync(path.dirname(dataPath), { recursive: true });

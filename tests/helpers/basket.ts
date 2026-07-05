@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { ThankYouPage } from '../pages/ThankYouPage';
 
-// Ищем совпадение сразу по article и name, чтобы тест падал,
-// если в корзину попал похожий, но не тот товар.
+// Шукаємо збіг одразу по article і name, щоб тест падав,
+// якщо в кошик потрапив схожий, але не той товар.
 export function expectProductInBasketResponse(body: any, productName: string, article: string) {
   const goods = body?.data?.goods ?? [];
   const product = goods.find((g: any) => g.article === article && g.name === productName);
@@ -13,18 +13,18 @@ export function expectProductInBasketResponse(body: any, productName: string, ar
   ).toBeTruthy();
 }
 
-// Достаёт товар из ответа POST /api/v1/basket/good по article — используется,
-// чтобы получить внутренний код магазина (code) и цену для последующей
-// сверки со страницей подтверждения заказа (см. expectOrderProductDetails).
+// Дістає товар з відповіді POST /api/v1/basket/good по article — використовується,
+// щоб отримати внутрішній код магазину (code) і ціну для подальшої
+// звірки зі сторінкою підтвердження замовлення (див. expectOrderProductDetails).
 export function getProductFromBasketResponse(body: any, article: string) {
   const goods = body?.data?.goods ?? [];
   return goods.find((g: any) => g.article === article);
 }
 
-// Проверяет на странице подтверждения заказа (thank you page), что реально
-// сохранились название, код товара, количество и сумма — а не дефолт/пусто.
-// code/price берутся из ответа API добавления в корзину (см.
-// getProductFromBasketResponse), а не хардкодятся в тестах.
+// Перевіряє на сторінці підтвердження замовлення (thank you page), що реально
+// збереглися назва, код товару, кількість і сума — а не дефолт/порожньо.
+// code/price беруться з відповіді API додавання в кошик (див.
+// getProductFromBasketResponse), а не хардкодяться в тестах.
 export async function expectOrderProductDetails(
   thankYouPage: ThankYouPage,
   details: { name: string; code: number; price: number; quantity: number },
