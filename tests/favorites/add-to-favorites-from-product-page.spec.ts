@@ -4,9 +4,14 @@ import { WishlistPage } from '../pages/WishlistPage';
 import { loginAsTestUser } from '../helpers/auth';
 import { deleteAllListsViaDesktop } from '../helpers/wishlist-cleanup';
 
-const PRODUCT_NAME = 'Конструктор LEGO City Залізничні стрілки (60238)';
+// Отдельный товар (не тот же, что в add-to-favorites.spec.ts/
+// favorites-display-state.spec.ts) — быстрые повторные тогглы избранного
+// для ОДНОГО good-id несколькими тестами подряд периодически приводили к
+// тому, что клик "добавить" не переключал кнопку в "ac" (похоже на
+// нестабильность самого сайта при частом повторном тоггле одного товара).
+const PRODUCT_NAME = 'Конструктор LEGO Marvel super heroes Шолом Залізної Людини (76165)';
 const PRODUCT_URL =
-  'https://web1-bi.ua/ukr/product/konstruktor-lego-city-strelochnyy-perevod-60238.html';
+  'https://web1-bi.ua/ukr/product/konstruktor-lego-marvel-super-heroes-shlem-zheleznogo-cheloveka-76165.html';
 
 // У web1-bi.ua сертифікат виданий на bi.ua (*.bi.ua), тому без цієї опції
 // Playwright відмовиться відкривати сторінку через ERR_CERT_COMMON_NAME_INVALID.
@@ -50,15 +55,10 @@ test('Добавление и удаление товара из избранн�
       (r) => r.url().includes('/api/v1/wish-lists/good') && r.method() === 'POST',
     );
 
-    await productPage.addToFavorites();
+    await productPage.addToFavoritesAndVerify();
 
     const addToWishlistRequest = await addToWishlistRequestPromise;
     goodId = new URL(addToWishlistRequest.url()).searchParams.get('good-id')!;
-
-    await expect(
-      productPage.wishButton,
-      'После добавления в избранное кнопка "До списку бажань" должна получить класс активного состояния ("ac")',
-    ).toHaveClass(/\bac\b/);
   });
 
   await test.step('Проверить, что товар появился в списке бажань', async () => {

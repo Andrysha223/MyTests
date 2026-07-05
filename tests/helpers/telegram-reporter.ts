@@ -24,6 +24,12 @@ interface TestInfo {
   durationMs: number;
   error?: string;
   steps: StepInfo[];
+  screenshotPath?: string;
+  // Номер финальной попытки (0 — прошла с первого раза, 1+ — понадобился
+  // ретрай). Используется в PDF, чтобы пометить "прошёл, но не сразу"
+  // отдельно от чистого PASSED — статус теста (status) при этом остаётся
+  // 'passed', чтобы не ломать подсчёт passed/failed в onEnd.
+  retryCount: number;
 }
 
 // Отправляет краткую сводку прогона (passed/failed/skipped + список упавших
@@ -32,10 +38,14 @@ interface TestInfo {
 // (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID) — если их нет, репортер ничего не
 // делает (не ломает прогон).
 export default class TelegramReporter implements Reporter {
-  private allTests: TestInfo[] = [];
-  private passed = 0;
-  private failed = 0;
-  private skipped = 0;
+  // onTestEnd вызывается ОТДЕЛЬНО на каждую попытку (изначальный запуск +
+  // каждый retry) — при retries > 0 (см. playwright.config.ts) один и тот же
+  // тест может упасть на попытке №1 и пройти на retry. Ключ — test.id,
+  // значение каждый раз ПЕРЕЗАПИСЫВАЕТСЯ, поэтому в итоге остаётся только
+  // ПОСЛЕДНЯЯ (финальная) попытка — без этого репортер считал упавшей и
+  // показывал в отчёте попытку, которая в итоге была успешно перепройдена.
+  private testsById = new Map<string, TestInfo>();
+  private flakyCount = 0;
   private startTime = 0;
 
   onBegin(_config: FullConfig, _suite: Suite) {
@@ -43,24 +53,25 @@ export default class TelegramReporter implements Reporter {
   }
 
   onTestEnd(test: TestCase, result: TestResult) {
-    if (result.status === 'passed') {
-      this.passed++;
-    } else if (result.status === 'skipped') {
-      this.skipped++;
-    } else {
-      this.failed++;
-    }
-
     const rawError = result.error?.message;
     const errorFirstLine = rawError?.split('\n')[0].trim();
 
-    this.allTests.push({
+    // Скриншот при падении (см. screenshot: 'only-on-failure' в
+    // playwright.config.ts) — сохранён на диске, передаём в дочерний процесс
+    // просто путь к файлу (сам PDF-процесс прочитает и закодирует его).
+    const screenshotAttachment = result.attachments.find(
+      (a) => a.name === 'screenshot' && a.path,
+    );
+
+    this.testsById.set(test.id, {
       title: test.title,
       file: path.basename(test.location.file),
       project: test.parent.project()?.name ?? '',
       status: result.status,
       durationMs: result.duration,
       error: errorFirstLine ? (errorFirstLine.length > 300 ? `${errorFirstLine.slice(0, 300)}…` : errorFirstLine) : undefined,
+      screenshotPath: screenshotAttachment?.path,
+      retryCount: result.retry,
       steps: result.steps
         // Оставляем только шаги верхнего уровня, объявленные явно через
         // test.step() — внутренние шаги Playwright (expect, page.click и
@@ -72,6 +83,14 @@ export default class TelegramReporter implements Reporter {
           durationMs: s.duration,
         })),
     });
+
+    // outcome() учитывает ВСЕ попытки теста на данный момент — 'flaky'
+    // означает, что финальная попытка прошла, но не с первого раза.
+    // Считаем только на последней попытке (иначе одно и то же "flaky"
+    // засчиталось бы несколько раз — по разу на каждую промежуточную попытку).
+    if (result.retry === test.retries && test.outcome() === 'flaky') {
+      this.flakyCount++;
+    }
   }
 
   async onEnd(result: FullResult) {
@@ -81,14 +100,19 @@ export default class TelegramReporter implements Reporter {
       return;
     }
 
+    const allTests = [...this.testsById.values()];
+    const passed = allTests.filter((t) => t.status === 'passed').length;
+    const skipped = allTests.filter((t) => t.status === 'skipped').length;
+    const failedTests = allTests.filter((t) => t.status !== 'passed' && t.status !== 'skipped');
+
     const durationSec = ((Date.now() - this.startTime) / 1000).toFixed(1);
     const statusIcon = result.status === 'passed' ? '✅' : '❌';
-    const failedTests = this.allTests.filter((t) => t.status !== 'passed' && t.status !== 'skipped');
 
     let text =
       `${statusIcon} Прогон тестов завершён (${result.status})\n` +
-      `Пройдено: ${this.passed} | Упало: ${this.failed} | Пропущено: ${this.skipped}\n` +
-      `Время: ${durationSec}s`;
+      `Пройдено: ${passed} | Упало: ${failedTests.length} | Пропущено: ${skipped}` +
+      (this.flakyCount > 0 ? ` | Со ретраем: ${this.flakyCount}` : '') +
+      `\nВремя: ${durationSec}s`;
 
     if (failedTests.length > 0) {
       const list = failedTests
@@ -112,7 +136,7 @@ export default class TelegramReporter implements Reporter {
     const dataPath = path.resolve('playwright-report/telegram-report-data.json');
     try {
       fs.mkdirSync(path.dirname(dataPath), { recursive: true });
-      fs.writeFileSync(dataPath, JSON.stringify({ summary: text, tests: this.allTests }));
+      fs.writeFileSync(dataPath, JSON.stringify({ summary: text, tests: allTests }));
 
       await new Promise<void>((resolve) => {
         const child = spawn(

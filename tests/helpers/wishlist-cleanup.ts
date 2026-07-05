@@ -15,11 +15,10 @@ import { WishlistPage } from '../pages/WishlistPage';
 // избранное" на исходной странице переставали приводить к реальному
 // добавлению. Копирование cookies даёт desktop-контексту ТУ ЖЕ сессию, не
 // создавая новую, поэтому исходная страница не страдает.
+
 export async function deleteAllListsViaDesktop(page: Page) {
   const browser = page.context().browser();
   if (!browser) {
-    // Нет доступа к browser (например, persistent context) — fallback на
-    // очистку в текущем контексте как есть.
     await new WishlistPage(page).deleteAllLists();
     return;
   }
@@ -40,7 +39,30 @@ export async function deleteAllListsViaDesktop(page: Page) {
     await desktopContext.addCookies(cookies);
     const desktopPage = await desktopContext.newPage();
     await desktopPage.goto('https://web1-bi.ua/ukr/lk/wish-list/');
-    await new WishlistPage(desktopPage).deleteAllLists();
+    const wishlistPage = new WishlistPage(desktopPage);
+    // deleteAllLists() удаляет только лишние списки (у которых есть кнопка
+    // удаления списка целиком) — дефолтный неудаляемый список остаётся, и
+    // если в нём с прошлых прогонов застрял товар, он туда никогда не
+    // денется сам. clearWishlist() отдельно чистит товары ВНУТРИ текущего
+    // списка (по кнопке удаления конкретного товара) — без этого шага клик
+    // "добавить в избранное" на уже favorited товаре в тесте переключал бы
+    // его в OFF вместо ON.
+    await wishlistPage.deleteAllLists();
+    await wishlistPage.clearWishlist();
+
+    // deleteAllLists() иногда опустошает аккаунт до НУЛЯ списков (не всегда
+    // остаётся один защищённый, как предполагалось раньше) — а клик
+    // "додати в бажань" при нуле списков идёт по другому флоу сайта: вместо
+    // обычного AJAX-добавления сайт создаёт список и делает РЕАЛЬНЫЙ переход
+    // на /ukr/lk/wish-list/, из-за которого тест, ожидающий остаться на
+    // текущей странице, зависает/падает. Гарантируем, что после очистки
+    // остаётся хотя бы один список — тогда клик всегда идёт по обычному
+    // AJAX-пути без навигации.
+    await desktopPage.goto('https://web1-bi.ua/ukr/lk/wish-list/');
+    const listCount = await desktopPage.locator('.WLwrapper').count();
+    if (listCount === 0) {
+      await wishlistPage.createList('Список бажань');
+    }
   } finally {
     await desktopContext.close();
   }

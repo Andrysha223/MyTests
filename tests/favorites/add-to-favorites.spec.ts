@@ -42,12 +42,7 @@ test('Добавление и удаление товара из избранн�
     const wishButton = brandPage.wishButton(PRODUCT_NAME);
     goodId = (await wishButton.getAttribute('data-good-id'))!;
 
-    await brandPage.addToFavorites(PRODUCT_NAME);
-
-    await expect(
-      wishButton,
-      'После добавления в избранное кнопка "До списку бажань" должна получить класс активного состояния ("ac")',
-    ).toHaveClass(/\bac\b/);
+    await brandPage.addToFavoritesAndVerify(PRODUCT_NAME);
   });
 
   await test.step('Проверить, что товар появился в списке бажань', async () => {

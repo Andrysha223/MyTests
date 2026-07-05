@@ -28,8 +28,24 @@ function escapeHtml(value) {
 function buildHtml(tests) {
   const rows = tests
     .map((t) => {
-      const statusColor = t.status === 'passed' ? '#1a7f37' : t.status === 'skipped' ? '#9a6700' : '#cf222e';
-      const statusLabel = t.status === 'passed' ? 'PASSED' : t.status === 'skipped' ? 'SKIPPED' : 'FAILED';
+      // Тест прошёл, но не с первой попытки — помечаем отдельным "FLAKY"
+      // (жёлтый), а не обычным зелёным PASSED, чтобы не терять из виду
+      // нестабильность, даже когда итоговый прогон формально зелёный.
+      const isFlaky = t.status === 'passed' && t.retryCount > 0;
+      const statusColor = isFlaky
+        ? '#9a6700'
+        : t.status === 'passed'
+          ? '#1a7f37'
+          : t.status === 'skipped'
+            ? '#57606a'
+            : '#cf222e';
+      const statusLabel = isFlaky
+        ? `FLAKY (retry #${t.retryCount})`
+        : t.status === 'passed'
+          ? 'PASSED'
+          : t.status === 'skipped'
+            ? 'SKIPPED'
+            : 'FAILED';
       const steps = t.steps
         .map((s) => {
           const stepColor = s.status === 'failed' ? '#cf222e' : '#57606a';
@@ -37,6 +53,20 @@ function buildHtml(tests) {
         })
         .join('');
       const error = t.error ? `<div class="error">${escapeHtml(t.error)}</div>` : '';
+
+      // Скриншот сохранён на диске (см. screenshot: 'only-on-failure' в
+      // playwright.config.ts) — читаем файл и встраиваем как base64, чтобы
+      // PDF был самодостаточным документом без внешних ссылок на файлы.
+      let screenshot = '';
+      if (t.screenshotPath && fs.existsSync(t.screenshotPath)) {
+        try {
+          const base64 = fs.readFileSync(t.screenshotPath).toString('base64');
+          screenshot = `<img class="screenshot" src="data:image/png;base64,${base64}" alt="Скриншот на момент падения">`;
+        } catch {
+          // Файла может не быть (например, если сам процесс раннера уже
+          // подчистил test-results/) — просто не вставляем картинку.
+        }
+      }
 
       return `
         <div class="test">
@@ -48,6 +78,7 @@ function buildHtml(tests) {
           <div class="meta">${escapeHtml(t.file)} · ${escapeHtml(t.project)}</div>
           ${steps ? `<div class="steps">${steps}</div>` : ''}
           ${error}
+          ${screenshot}
         </div>`;
     })
     .join('');
@@ -68,6 +99,7 @@ function buildHtml(tests) {
   .step { font-size: 11px; margin-bottom: 2px; }
   .dur { color: #57606a; font-size: 10px; }
   .error { margin-top: 6px; padding: 6px 8px; background: #fff0ef; border: 1px solid #ffcecb; border-radius: 4px; color: #cf222e; font-size: 11px; }
+  .screenshot { display: block; max-width: 100%; margin-top: 8px; border: 1px solid #d0d7de; border-radius: 4px; }
 </style>
 </head>
 <body>

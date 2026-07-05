@@ -17,8 +17,16 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  // Ретраи включены и локально: часть тестов избранного (tests/favorites)
+  // упирается в подтверждённую случайную нестабильность самого сайта —
+  // клик "додати в бажань" примерно в половине случаев не срабатывает,
+  // независимо от товара, состояния списков или паузы между попытками
+  // (см. README.md, раздел 13.2/13.3). Ретрай на уровне Playwright
+  // перезапускает упавший тест целиком с нуля — это ловит проблему
+  // надёжнее, чем ретрай одного клика внутри теста. retries:1 всё ещё
+  // иногда пропускает genuine fail (~50% × ~50% = ~25% шанс не повезти
+  // оба раза подряд) — 2 ретрая (3 попытки всего) снижают до ~12.5%.
+  retries: 2,
   /* Opt out of parallel tests on CI. */
   // 1 воркер: тесты используют один общий тестовый аккаунт (логин, корзина,
   // список избранного) — при 2+ воркерах параллельные тесты гоняются за одним
@@ -37,6 +45,9 @@ export default defineConfig({
 
     /* Collect trace on failure. See https://playwright.dev/docs/trace-viewer */
     trace: 'retain-on-failure',
+
+    /* Скриншот при падении — попадает в HTML-отчёт и в PDF для Telegram. */
+    screenshot: 'only-on-failure',
   },
 
   /* Configure projects for major browsers */
