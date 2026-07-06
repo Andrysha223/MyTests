@@ -15,16 +15,15 @@ export function expectProductInBasketResponse(body: any, productName: string, ar
 
 // Дістає товар з відповіді POST /api/v1/basket/good по article — використовується,
 // щоб отримати внутрішній код магазину (code) і ціну для подальшої
-// звірки зі сторінкою підтвердження замовлення (див. expectOrderProductDetails).
+// звірки зі сторінкою підтвердження замовлення
 export function getProductFromBasketResponse(body: any, article: string) {
   const goods = body?.data?.goods ?? [];
   return goods.find((g: any) => g.article === article);
 }
 
 // Перевіряє на сторінці підтвердження замовлення (thank you page), що реально
-// збереглися назва, код товару, кількість і сума — а не дефолт/порожньо.
-// code/price беруться з відповіді API додавання в кошик (див.
-// getProductFromBasketResponse)
+// збереглися назва, код товару, кількість і сума — а не дефолт/порожні.
+// code/price беруться з відповіді API додавання в кошик
 export async function expectOrderProductDetails(
   thankYouPage: ThankYouPage,
   details: { name: string; code: number; price: number; quantity: number },
