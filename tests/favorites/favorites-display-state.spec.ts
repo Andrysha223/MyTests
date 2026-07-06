@@ -5,16 +5,9 @@ import { WishlistPage } from '../pages/WishlistPage';
 import { loginAsTestUser } from '../helpers/auth';
 import { deleteAllListsViaDesktop } from '../helpers/wishlist-cleanup';
 
-// Окремий товар від add-to-favorites.spec.ts/add-to-favorites-from-product-page.spec.ts
-// — швидкі повторні тогли обраного для ОДНОГО good-id кількома
-// тестами поспіль періодично призводили до того, що клік "додати" не
-// перемикав кнопку в "ac" (схоже на нестабільність самого сайту).
 const FAVORITED_PRODUCT_NAME = 'Конструктор LEGO Speed champions Автомобіль McLaren Senna (75892)';
 const FAVORITED_PRODUCT_URL =
   'https://web1-bi.ua/ukr/product/konstruktor-lego-speed-champions-avtomobil-mclaren-senna-75892.html';
-// "Контрольний" товар, який НЕ додаємо в обране — використовується, щоб
-// переконатися, що активний стан сердечка стосується саме потрібного
-// товару, а не є глобальним глюком відображення на сторінці.
 const OTHER_PRODUCT_NAME = 'Конструктор LEGO City Залізничні стрілки (60238)';
 
 // У web1-bi.ua сертифікат виданий на bi.ua (*.bi.ua), тому без цієї опції

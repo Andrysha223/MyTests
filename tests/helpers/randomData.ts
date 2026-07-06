@@ -16,10 +16,23 @@ function randomDigits(length: number): string {
   return digits;
 }
 
-// Реальні коди українських мобільних операторів — сайт валідує номер
-// саме за цим списком ("Вказуйте лише номери мобільних операторів України").
 const MOBILE_OPERATOR_CODES = [
-  '50', '63', '66', '67', '68', '73', '77', '91', '92', '93', '94', '95', '96', '97', '98', '99',
+  '50',
+  '63',
+  '66',
+  '67',
+  '68',
+  '73',
+  '77',
+  '91',
+  '92',
+  '93',
+  '94',
+  '95',
+  '96',
+  '97',
+  '98',
+  '99',
 ];
 
 function randomOperatorCode(): string {
@@ -30,8 +43,6 @@ export interface RandomContactDetails {
   lastName: string;
   firstName: string;
   patronymic: string;
-  // 9 цифр без ведучого "0" — маска "+38 (0__) ___-__-__" сама підставляє
-  // фіксований "0", вводити його не потрібно (див. CheckoutPage.fillContactDetails).
   phone: string;
   email: string;
 }

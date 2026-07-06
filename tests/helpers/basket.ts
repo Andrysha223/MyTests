@@ -24,7 +24,7 @@ export function getProductFromBasketResponse(body: any, article: string) {
 // Перевіряє на сторінці підтвердження замовлення (thank you page), що реально
 // збереглися назва, код товару, кількість і сума — а не дефолт/порожньо.
 // code/price беруться з відповіді API додавання в кошик (див.
-// getProductFromBasketResponse), а не хардкодяться в тестах.
+// getProductFromBasketResponse)
 export async function expectOrderProductDetails(
   thankYouPage: ThankYouPage,
   details: { name: string; code: number; price: number; quantity: number },
